@@ -245,9 +245,9 @@ class _VideoWidgetState extends State<VideoWidget> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withValues(alpha: 0.6),
                       Colors.transparent,
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withValues(alpha: 0.6),
                     ],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
@@ -461,9 +461,9 @@ class _YoutubePlayerShell extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withValues(alpha: 0.6),
                       Colors.transparent,
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withValues(alpha: 0.6),
                     ],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,

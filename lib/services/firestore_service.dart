@@ -16,10 +16,7 @@ class FirestoreService {
       for (var module in course.modules) {
         await modulesRef.doc(module.id).set(module.toMap());
       }
-
-      print('FirestoreService: Successfully created course ${course.id} with ${course.modules.length} modules.');
     } catch (e) {
-      print('FirestoreService Error: $e');
       rethrow;
     }
   }

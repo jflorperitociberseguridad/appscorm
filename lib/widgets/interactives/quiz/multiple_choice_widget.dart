@@ -59,7 +59,7 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
                   onPressed: () => setState(() => options.removeAt(e.key)),
                 ),
               );
-            }).toList(),
+            }),
             ElevatedButton(
               onPressed: () => setState(() => options.add("Nueva Opción")),
               child: const Text("Añadir Opción"),

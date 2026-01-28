@@ -287,7 +287,7 @@ class _ImageHotspotWidgetState extends State<ImageHotspotWidget> with SingleTick
               Switch(
                 value: _editMode,
                 onChanged: (value) => setState(() => _editMode = value),
-                activeColor: accent,
+                activeThumbColor: accent,
               ),
             ],
           ),
@@ -422,7 +422,7 @@ class _HotspotDot extends StatelessWidget {
                     height: 28,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: accent.withOpacity(0.2),
+                      color: accent.withValues(alpha: 0.2),
                     ),
                   ),
                 ),
@@ -436,7 +436,7 @@ class _HotspotDot extends StatelessWidget {
                   border: Border.all(color: accent, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),

@@ -35,7 +35,6 @@ class WebImage extends StatelessWidget {
       
       // Manejo de errores básico
       img.onError.listen((event) {
-        print("WEB IMAGE ERROR loading $imageUrl");
         img.src = 'https://picsum.photos/seed/error/600/400'; // Fallback visual
       });
 

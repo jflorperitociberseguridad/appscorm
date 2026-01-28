@@ -74,7 +74,6 @@ class ManuscriptService {
 
   bool _hasGeminiKey() {
     if (_geminiKey.isEmpty || _textModel == null) {
-      print("⚠️ GEMINI_API_KEY no configurada. Se omite llamada a Gemini.");
       return false;
     }
     return true;

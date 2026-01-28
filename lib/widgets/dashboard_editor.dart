@@ -8,13 +8,16 @@ import 'package:web/web.dart' as web;
 
 import '../models/course_model.dart';
 import '../models/interactive_block.dart';
+import '../models/module_model.dart';
 import '../providers/course_provider.dart';
 import '../services/ai_service.dart';
 import '../services/scorm/scorm_export_service.dart';
 import '../services/storage_service.dart';
-import '../widgets/interactive_block_renderer.dart';
 import '../widgets/wysiwyg_editor.dart';
+import 'creation/creation_shared_widgets.dart';
 import 'dashboard_sidebar.dart';
+
+part 'dashboard/dashboard_editor_controller.dart';
 
 class DashboardEditor extends StatefulWidget {
   final CourseModel course;
@@ -53,18 +56,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
   late final ScrollController _mainScrollController;
   late final bool _ownsScrollController;
   late TextEditingController _titleController;
-
-  static const Set<String> _exportSectionIds = {
-    'general',
-    'intro',
-    'objectives',
-    'map',
-    'resources',
-    'glossary',
-    'faq',
-    'eval',
-    'stats',
-  };
+  CourseModel? _localCourseState;
 
   @override
   void initState() {
@@ -72,6 +64,15 @@ class _DashboardEditorState extends State<DashboardEditor> {
     _ownsScrollController = widget.scrollController == null;
     _mainScrollController = widget.scrollController ?? ScrollController();
     _titleController = TextEditingController(text: widget.course.title);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final container = ProviderScope.containerOf(context, listen: false);
+      final aiCourse = container.read(courseProvider);
+      if (aiCourse != null && aiCourse.modules.isNotEmpty) {
+        setState(() {
+          _localCourseState = aiCourse;
+        });
+      }
+    });
   }
 
   @override
@@ -114,6 +115,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
         ],
       ),
     );
+    if (!mounted) return;
     if (confirmed != true) return;
 
     final container = ProviderScope.containerOf(context, listen: false);
@@ -211,10 +213,12 @@ class _DashboardEditorState extends State<DashboardEditor> {
 
   String _buildSectionContext(String selectedSection) {
     switch (selectedSection) {
+      case 'general':
+        return widget.course.general.blocks.map((b) => b.content.toString()).join(' ');
       case 'intro':
-        return widget.course.introText;
+        return widget.course.intro.introBlocks.map((b) => b.content.toString()).join(' ');
       case 'objectives':
-        return widget.course.objectives.join(', ');
+        return widget.course.intro.objectiveBlocks.map((b) => b.content.toString()).join(' ');
       case 'map':
         return widget.course.conceptMap.blocks.map((b) => b.content.toString()).join(' ');
       case 'index':
@@ -223,9 +227,9 @@ class _DashboardEditorState extends State<DashboardEditor> {
       case 'resources':
         return widget.course.resources.blocks.map((b) => b.content.toString()).join(' ');
       case 'glossary':
-        return widget.course.glossaryItems.map((g) => g.term).join(', ');
+        return widget.course.glossary.blocks.map((b) => b.content.toString()).join(' ');
       case 'faq':
-        return widget.course.faqItems.map((f) => f.question).join(' ');
+        return widget.course.faq.blocks.map((b) => b.content.toString()).join(' ');
       case 'eval':
         return widget.course.evaluation.blocks.map((b) => b.content.toString()).join(' ');
       case 'stats':
@@ -257,11 +261,12 @@ class _DashboardEditorState extends State<DashboardEditor> {
           'methodology': _panelMethodology,
         },
       );
+      if (!mounted) return;
       _scheduleSetState(() {
         _generatedSectionContent[selectedSection] = result.content;
         _generatedSectionFormat[selectedSection] = result.format;
-        if (selectedSection == 'intro' && result.format == 'rich_text' && result.content.isNotEmpty) {
-          widget.course.introText = result.content;
+        if (result.content.isNotEmpty) {
+          _injectGeneratedContent(selectedSection, result);
           _notifyCourseUpdated();
         }
       });
@@ -272,13 +277,111 @@ class _DashboardEditorState extends State<DashboardEditor> {
     }
   }
 
-  void _openBlockSelector(List<InteractiveBlock> targetList) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildBlockPickerSheet(targetList),
-    );
+  void _injectGeneratedContent(String selectedSection, SectionGenerationResult result) {
+    final targets = _resolveTargetBlocks(selectedSection);
+    if (targets == null) return;
+    _removePlaceholderBlocks(targets);
+
+    if (result.format == 'json' && selectedSection == 'eval') {
+      final blocks = _buildEvaluationBlocksFromJson(result.content);
+      if (blocks.isNotEmpty) {
+        targets.addAll(blocks);
+      }
+      return;
+    }
+
+    final blockType = result.format == 'rich_text' ? BlockType.textRich : BlockType.textPlain;
+    targets.add(InteractiveBlock.create(type: blockType, content: {'text': result.content}));
+  }
+
+  List<InteractiveBlock>? _resolveTargetBlocks(String selectedSection) {
+    switch (selectedSection) {
+      case 'general':
+        return widget.course.general.blocks;
+      case 'intro':
+        return widget.course.intro.introBlocks;
+      case 'objectives':
+        return widget.course.intro.objectiveBlocks;
+      case 'map':
+        return widget.course.conceptMap.blocks;
+      case 'resources':
+        return widget.course.resources.blocks;
+      case 'glossary':
+        return widget.course.glossary.blocks;
+      case 'faq':
+        return widget.course.faq.blocks;
+      case 'eval':
+        return widget.course.evaluation.blocks;
+      default:
+        if (selectedSection.startsWith('module_')) {
+          return widget.selectionController.getSelectedModule(widget.course)?.blocks;
+        }
+        return null;
+    }
+  }
+
+  void _removePlaceholderBlocks(List<InteractiveBlock> blocks) {
+    if (blocks.length != 1) return;
+    final block = blocks.first;
+    if (block.type != BlockType.textPlain && block.type != BlockType.textRich && block.type != BlockType.essay) {
+      return;
+    }
+    final text = (block.content['text'] ?? '').toString();
+    if (text.trim().isEmpty) {
+      blocks.clear();
+    }
+  }
+
+  List<InteractiveBlock> _buildEvaluationBlocksFromJson(String rawJson) {
+    try {
+      final decoded = jsonDecode(rawJson);
+      if (decoded is! Map<String, dynamic>) return [];
+      final blocks = <InteractiveBlock>[];
+      final title = (decoded['title'] ?? '').toString().trim();
+      final instructions = (decoded['instructions'] ?? '').toString().trim();
+      if (title.isNotEmpty) {
+        blocks.add(InteractiveBlock.create(type: BlockType.textRich, content: {'text': '<h3>$title</h3>'}));
+      }
+      if (instructions.isNotEmpty) {
+        blocks.add(InteractiveBlock.create(type: BlockType.textPlain, content: {'text': instructions}));
+      }
+      final questions = decoded['questions'];
+      if (questions is List) {
+        for (final q in questions) {
+          if (q is! Map) continue;
+          final map = q.cast<String, dynamic>();
+          final question = (map['question'] ?? '').toString().trim();
+          final options = (map['options'] is List)
+              ? (map['options'] as List).map((e) => e.toString()).toList()
+              : <String>[];
+          final correctIndex = map['correctIndex'] is int ? map['correctIndex'] as int : 0;
+          if (question.isEmpty) continue;
+          blocks.add(InteractiveBlock.create(
+            type: BlockType.singleChoice,
+            content: {
+              'question': question,
+              'options': options,
+              'correctIndex': correctIndex,
+            },
+          ));
+        }
+      }
+      return blocks;
+    } catch (_) {
+      if (rawJson.trim().isEmpty) return [];
+      return [
+        InteractiveBlock.create(type: BlockType.textPlain, content: {'text': rawJson})
+      ];
+    }
+  }
+
+  Future<void> _flushEditorState() async {
+    FocusScope.of(context).unfocus();
+    final title = _titleController.text.trim();
+    if (title.isNotEmpty && widget.course.title != title) {
+      widget.course.title = title;
+    }
+    _notifyCourseUpdated();
   }
 
   void _exportarJSON() {
@@ -331,9 +434,9 @@ class _DashboardEditorState extends State<DashboardEditor> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.indigo.withOpacity(0.05),
+                color: Colors.indigo.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.indigo.withOpacity(0.1)),
+                border: Border.all(color: Colors.indigo.withValues(alpha: 0.1)),
               ),
               child: Row(
                 children: [
@@ -364,17 +467,16 @@ class _DashboardEditorState extends State<DashboardEditor> {
             ),
             onPressed: () async {
               await StorageService().saveCourse(widget.course.toMap());
-              if (mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("✅ Curso guardado correctamente en 'Mis Cursos'"),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: Colors.indigo,
-                    width: 400,
-                  ),
-                );
-              }
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("✅ Curso guardado correctamente en 'Mis Cursos'"),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Colors.indigo,
+                  width: 400,
+                ),
+              );
             },
             child: const Text("GUARDAR AHORA", style: TextStyle(color: Colors.white)),
           ),
@@ -391,6 +493,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
       type: pickingType,
       allowedExtensions: allowedExt,
     );
+    if (!mounted) return;
 
     if (result != null) {
       _scheduleSetState(() {
@@ -404,28 +507,6 @@ class _DashboardEditorState extends State<DashboardEditor> {
     }
   }
 
-  CourseModel _buildExportCourse() {
-    final exportCourse = CourseModel.fromMap(widget.course.toMap());
-    final selectedModuleIds = widget.course.modules
-        .where((module) => widget.selectionController.isModuleSelected(module))
-        .map((module) => module.id)
-        .toSet();
-    exportCourse.modules.removeWhere((module) => !selectedModuleIds.contains(module.id));
-    return exportCourse;
-  }
-
-  Set<String> _enabledStaticSectionIds() {
-    return _exportSectionIds.where(widget.selectionController.isSectionSelected).toSet();
-  }
-
-  void _exportScorm() {
-    final exportCourse = _buildExportCourse();
-    final enabledStaticSections = _enabledStaticSectionIds();
-    ScormExportService().exportCourse(
-      exportCourse,
-      enabledStaticSections: enabledStaticSections,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -451,60 +532,104 @@ class _DashboardEditorState extends State<DashboardEditor> {
         bottom: false,
         child: SizedBox(
           height: 60,
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.dashboard_customize, color: Colors.indigo),
-                onPressed: () => context.go('/'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.bug_report, color: Colors.deepOrange),
-                tooltip: 'Stress Test Golden Course',
-                onPressed: _confirmGoldenMockLoad,
-              ),
-              Expanded(
-                child: TextFormField(
-                  controller: _titleController,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  decoration: const InputDecoration(border: InputBorder.none, hintText: "Título del curso..."),
-                  onChanged: (v) {
-                    widget.course.title = v;
-                    _notifyCourseUpdated();
-                  },
-                ),
-              ),
-              IconButton(
-                icon: Icon(widget.isRightPanelVisible ? Icons.grid_view_rounded : Icons.grid_view_outlined, color: Colors.grey),
-                onPressed: widget.onToggleRightPanel,
-                tooltip: "Mostrar/Ocultar Panel Alumno",
-              ),
-              IconButton(
-                icon: const Icon(Icons.download_for_offline_outlined, color: Colors.teal),
-                tooltip: "Descargar Copia JSON (Backup)",
-                onPressed: _exportarJSON,
-              ),
-              const VerticalDivider(width: 30, indent: 15, endIndent: 15),
-              TextButton.icon(
-                onPressed: _guardarProgreso,
-                icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                label: const Text("GUARDAR"),
-              ),
-              const SizedBox(width: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
-                child: ElevatedButton.icon(
-                  onPressed: _exportScorm,
-                  icon: const Icon(Icons.archive_outlined, size: 16),
-                  label: const Text("EXPORTAR SCORM"),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade900, foregroundColor: Colors.white),
-                ),
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 360;
+              final titleField = TextFormField(
+                controller: _titleController,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis),
+                decoration: const InputDecoration(border: InputBorder.none, hintText: "Título del curso..."),
+                onChanged: (v) {
+                  widget.course.title = v;
+                  _notifyCourseUpdated();
+                },
+              );
+              final actionsRow = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(widget.isRightPanelVisible ? Icons.grid_view_rounded : Icons.grid_view_outlined, color: Colors.grey),
+                    onPressed: widget.onToggleRightPanel,
+                    tooltip: "Mostrar/Ocultar Panel Alumno",
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.download_for_offline_outlined, color: Colors.teal),
+                    tooltip: "Descargar Copia JSON (Backup)",
+                    onPressed: _exportarJSON,
+                  ),
+                  const VerticalDivider(width: 30, indent: 15, endIndent: 15),
+                  TextButton.icon(
+                    onPressed: _guardarProgreso,
+                    icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                    label: const Text("GUARDAR"),
+                  ),
+                  const SizedBox(width: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
+                    child: ElevatedButton.icon(
+                      onPressed: _exportScorm,
+                      icon: const Icon(Icons.archive_outlined, size: 16),
+                      label: const Text("EXPORTAR SCORM"),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade900, foregroundColor: Colors.white),
+                    ),
+                  ),
+                ],
+              );
+
+              if (isNarrow) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.dashboard_customize, color: Colors.indigo),
+                        onPressed: () => context.go('/'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.bug_report, color: Colors.deepOrange),
+                        tooltip: 'Stress Test Golden Course',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: _confirmGoldenMockLoad,
+                      ),
+                      SizedBox(width: 200, child: titleField),
+                      actionsRow,
+                    ],
+                  ),
+                );
+              }
+
+              return Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.dashboard_customize, color: Colors.indigo),
+                    onPressed: () => context.go('/'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.bug_report, color: Colors.deepOrange),
+                    tooltip: 'Stress Test Golden Course',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _confirmGoldenMockLoad,
+                  ),
+                  Expanded(child: titleField),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: actionsRow,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
+
+  static const double _toolbarReservedHeight = 340;
+  static const double _toolbarTopSpacing = 18;
 
   Widget _buildMainContentArea(String selectedSection) {
     return Expanded(
@@ -518,41 +643,74 @@ class _DashboardEditorState extends State<DashboardEditor> {
               border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _getSectionTitle(selectedSection).toUpperCase(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.indigo, letterSpacing: 1.1),
+                Expanded(
+                  child: Text(
+                    _getSectionTitle(selectedSection).toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.indigo, letterSpacing: 1.1),
+                  ),
                 ),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _isGeneratingSection ? null : () => generateCurrentSectionContent(selectedSection),
-                      icon: _isGeneratingSection
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.auto_awesome, size: 16),
-                      label: const Text("GENERAR IA"),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        if (selectedSection != 'index' && selectedSection != 'stats')
+                          ElevatedButton.icon(
+                            onPressed: _isGeneratingSection ? null : () => generateCurrentSectionContent(selectedSection),
+                            icon: _isGeneratingSection
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.auto_awesome, size: 16),
+                            label: const Text("GENERAR IA"),
+                          ),
+                        const SizedBox(width: 12),
+                        if (selectedSection == 'modules_root')
+                          ElevatedButton.icon(
+                            onPressed: widget.onAddModule,
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text("NUEVO TEMA"),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    if (selectedSection == 'modules_root')
-                      ElevatedButton.icon(
-                        onPressed: widget.onAddModule,
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text("NUEVO TEMA"),
-                      ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(35),
-              child: _buildSectionEditor(selectedSection),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    padding: const EdgeInsets.all(35),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: _toolbarReservedHeight + _toolbarTopSpacing),
+                      child: _buildSectionEditor(selectedSection),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: _toolbarTopSpacing,
+                  left: 35,
+                  right: 35,
+                  child: _BlockToolbar(
+                    sectionId: selectedSection,
+                    onBlockSelected: (type, initialContent) => _addBlockToSection(
+                      sectionId,
+                      type,
+                      initialContent: initialContent,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -673,6 +831,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
               },
             ),
           ),
+          _buildUniversalBlockList(widget.course.intro.introBlocks, sectionId: 'intro'),
           _buildGeneratedContentCard('intro', "Salida IA · Introducción"),
         ],
       ),
@@ -704,6 +863,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
               ],
             ),
           ),
+          _buildUniversalBlockList(widget.course.intro.objectiveBlocks, sectionId: 'objectives'),
           _buildGeneratedContentCard('objectives', "Salida IA · Objetivos"),
         ],
       ),
@@ -721,10 +881,11 @@ class _DashboardEditorState extends State<DashboardEditor> {
               children: [
                 for (int i = 0; i < widget.course.modules.length; i++)
                   ListTile(
+                    key: ValueKey('module_index_${widget.course.modules[i].id}'),
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       radius: 12,
-                      backgroundColor: Colors.indigo.withOpacity(0.1),
+                      backgroundColor: Colors.indigo.withValues(alpha: 0.1),
                       child: Text(
                         "${i + 1}",
                         style: const TextStyle(fontSize: 11, color: Colors.indigo),
@@ -749,14 +910,17 @@ class _DashboardEditorState extends State<DashboardEditor> {
           ),
           _buildSimpleCard(
             title: "Acciones rápidas",
-            child: Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: widget.onAddModule,
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text("Nuevo tema"),
-                ),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: widget.onAddModule,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text("Nuevo tema"),
+                  ),
+                ],
+              ),
             ),
           ),
           _buildGeneratedContentCard('index', "Salida IA · Índice del curso"),
@@ -772,9 +936,9 @@ class _DashboardEditorState extends State<DashboardEditor> {
         children: [
           _buildInitialPanelConfigCard(),
           _buildGeneralHeader(),
-          _buildGeneratedContentCard('general', "Salida IA · General"),
           const SizedBox(height: 10),
-          _buildUniversalBlockList(widget.course.general.blocks),
+          _buildUniversalBlockList(widget.course.general.blocks, sectionId: 'general'),
+          _buildGeneratedContentCard('general', "Salida IA · General"),
         ],
       ),
     );
@@ -789,9 +953,9 @@ class _DashboardEditorState extends State<DashboardEditor> {
             title: "Mapa conceptual del curso",
             child: const Text("Organiza el mapa conceptual y sus bloques visuales."),
           ),
-          _buildGeneratedContentCard('map', "Salida IA · Mapa Conceptual"),
           const SizedBox(height: 10),
-          _buildUniversalBlockList(widget.course.conceptMap.blocks),
+          _buildUniversalBlockList(widget.course.conceptMap.blocks, sectionId: 'map'),
+          _buildGeneratedContentCard('map', "Salida IA · Mapa Conceptual"),
         ],
       ),
     );
@@ -805,6 +969,52 @@ class _DashboardEditorState extends State<DashboardEditor> {
           _buildSimpleCard(
             title: "Gestión del temario",
             child: _buildModulesManagerRoot(),
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final course = ref.watch(courseProvider);
+              final modules = course?.modules ?? const <ModuleModel>[];
+              if (modules.isEmpty) {
+                return _buildSimpleCard(
+                  title: "Temas existentes",
+                  child: const Text(
+                    "Aún no hay temas creados. Añade tu primer módulo desde el panel.",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                );
+              }
+              return _buildSimpleCard(
+                title: "Temas existentes",
+                child: Column(
+                  children: [
+                    ...course!.modules.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final module = entry.value;
+                      return ListTile(
+                        key: ValueKey('modules_root_${module.id}'),
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Colors.indigo.withValues(alpha: 0.1),
+                          child: Text(
+                            "${index + 1}",
+                            style: const TextStyle(fontSize: 11, color: Colors.indigo),
+                          ),
+                        ),
+                        title: Text(
+                          module.title,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        trailing: TextButton(
+                          onPressed: () => widget.selectionController.selectModule(module),
+                          child: const Text("ABRIR"),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              );
+            },
           ),
           _buildGeneratedContentCard('modules_root', "Salida IA · Temario"),
         ],
@@ -825,9 +1035,12 @@ class _DashboardEditorState extends State<DashboardEditor> {
             title: "Tema seleccionado",
             child: Text(module.title, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
-          _buildGeneratedContentCard(widget.selectionController.sectionIdForModule(module), "Salida IA · ${module.title}"),
           const SizedBox(height: 10),
-          _buildUniversalBlockList(module.blocks),
+          _buildUniversalBlockList(
+            module.blocks,
+            sectionId: widget.selectionController.sectionIdForModule(module),
+          ),
+          _buildGeneratedContentCard(widget.selectionController.sectionIdForModule(module), "Salida IA · ${module.title}"),
         ],
       ),
     );
@@ -842,9 +1055,9 @@ class _DashboardEditorState extends State<DashboardEditor> {
             title: "Recursos didácticos",
             child: const Text("Gestiona recursos adicionales y materiales complementarios."),
           ),
-          _buildGeneratedContentCard('resources', "Salida IA · Recursos"),
           const SizedBox(height: 10),
-          _buildUniversalBlockList(widget.course.resources.blocks),
+          _buildUniversalBlockList(widget.course.resources.blocks, sectionId: 'resources'),
+          _buildGeneratedContentCard('resources', "Salida IA · Recursos"),
         ],
       ),
     );
@@ -859,9 +1072,9 @@ class _DashboardEditorState extends State<DashboardEditor> {
             title: "Evaluación final",
             child: const Text("Configura la evaluación final y sus bloques."),
           ),
-          _buildGeneratedContentCard('eval', "Salida IA · Evaluación Final (JSON)"),
           const SizedBox(height: 10),
-          _buildUniversalBlockList(widget.course.evaluation.blocks),
+          _buildUniversalBlockList(widget.course.evaluation.blocks, sectionId: 'eval'),
+          _buildGeneratedContentCard('eval', "Salida IA · Evaluación Final (JSON)"),
         ],
       ),
     );
@@ -873,9 +1086,6 @@ class _DashboardEditorState extends State<DashboardEditor> {
       child: Column(
         children: [
           _buildStatsHeader(),
-          _buildGeneratedContentCard('stats', "Salida IA · Estadísticas"),
-          const SizedBox(height: 10),
-          _buildUniversalBlockList(widget.course.stats.blocks),
         ],
       ),
     );
@@ -897,39 +1107,21 @@ class _DashboardEditorState extends State<DashboardEditor> {
       title: "Indicadores del curso",
       child: Column(
         children: [
-          TextFormField(
-            key: const ValueKey('stats_avg_score'),
-            initialValue: widget.course.stats.averageScore.toStringAsFixed(1),
-            decoration: const InputDecoration(
-              labelText: "Nota promedio (%)",
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (value) {
-              _scheduleSetState(() {
-                widget.course.stats.averageScore = double.tryParse(value) ?? 0.0;
-              });
-              _notifyCourseUpdated();
-            },
-          ),
+          _statRow("Nota promedio (%)", widget.course.stats.averageScore.toStringAsFixed(1)),
           const SizedBox(height: 12),
-          TextFormField(
-            key: const ValueKey('stats_avg_time'),
-            initialValue: widget.course.stats.averageTimeMinutes.toString(),
-            decoration: const InputDecoration(
-              labelText: "Tiempo promedio (min)",
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
-            onChanged: (value) {
-              _scheduleSetState(() {
-                widget.course.stats.averageTimeMinutes = int.tryParse(value) ?? 0;
-              });
-              _notifyCourseUpdated();
-            },
-          ),
+          _statRow("Tiempo promedio (min)", widget.course.stats.averageTimeMinutes.toString()),
         ],
       ),
+    );
+  }
+
+  Widget _statRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+      ],
     );
   }
 
@@ -1020,6 +1212,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
               ],
             ),
           ),
+          _buildUniversalBlockList(widget.course.glossary.blocks, sectionId: 'glossary'),
           _buildGeneratedContentCard('glossary', "Salida IA · Glosario"),
         ],
       ),
@@ -1106,6 +1299,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
               ],
             ),
           ),
+          _buildUniversalBlockList(widget.course.faq.blocks, sectionId: 'faq'),
           _buildGeneratedContentCard('faq', "Salida IA · Preguntas Frecuentes"),
         ],
       ),
@@ -1172,8 +1366,8 @@ class _DashboardEditorState extends State<DashboardEditor> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.indigo.withOpacity(0.08)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12)],
+        border: Border.all(color: Colors.indigo.withValues(alpha: 0.08)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1193,8 +1387,8 @@ class _DashboardEditorState extends State<DashboardEditor> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.indigo.withOpacity(0.1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15)],
+        border: Border.all(color: Colors.indigo.withValues(alpha: 0.1)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1213,167 +1407,52 @@ class _DashboardEditorState extends State<DashboardEditor> {
 
   Widget _fileRow(String label, String value, IconData icon, VoidCallback onPick) {
     bool hasFile = value.isNotEmpty;
-    return Row(
-      children: [
-        Icon(icon, color: hasFile ? Colors.green : Colors.grey, size: 24),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text(hasFile ? value : "Pendiente de cargar...", style: TextStyle(color: hasFile ? Colors.black54 : Colors.red.shade300, fontSize: 11)),
-            ],
-          ),
-        ),
-        ElevatedButton(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+        final infoColumn = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(
+              hasFile ? value : "Pendiente de cargar...",
+              style: TextStyle(color: hasFile ? Colors.black54 : Colors.red.shade300, fontSize: 11),
+            ),
+          ],
+        );
+        final actionButton = ElevatedButton(
           onPressed: onPick,
           style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade100, elevation: 0, foregroundColor: Colors.indigo),
           child: Text(hasFile ? "CAMBIAR" : "CARGAR"),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUniversalBlockList(List<InteractiveBlock> blocks) {
-    return Column(
-      children: [
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: blocks.length,
-          itemBuilder: (context, index) => _buildBlockWrapper(blocks, index),
-        ),
-        const SizedBox(height: 30),
-        Container(
-          width: double.infinity,
-          height: 80,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.indigo.withOpacity(0.2), style: BorderStyle.solid),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: InkWell(
-            onTap: () => _openBlockSelector(blocks),
-            borderRadius: BorderRadius.circular(15),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.add_circle, color: Colors.indigo),
-                SizedBox(width: 15),
-                Text("INCORPORAR NUEVA SECCIÓN DEBAJO", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, letterSpacing: 1.1)),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBlockWrapper(List<InteractiveBlock> list, int index) {
-    final block = list[index];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 25),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: const BorderRadius.vertical(top: Radius.circular(12))),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(_getIconForBlock(block.type), size: 14, color: Colors.indigo),
-                    const SizedBox(width: 10),
-                    Text(block.type.name.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  ],
-                ),
-                Row(
-                  children: [
-                    IconButton(icon: const Icon(Icons.keyboard_arrow_up, size: 16), onPressed: () {}),
-                    IconButton(icon: const Icon(Icons.keyboard_arrow_down, size: 16), onPressed: () {}),
-                    IconButton(
-                      icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Colors.red),
-                      onPressed: () {
-                        _scheduleSetState(() => list.removeAt(index));
-                        _notifyCourseUpdated();
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(25),
-            child: InteractiveBlockRenderer(block: block),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBlockPickerSheet(List<InteractiveBlock> targetList) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
-      padding: const EdgeInsets.all(35),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("CATÁLOGO DE FUNCIONALIDADES H5P", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.indigo)),
-          const Text("Selecciona el componente interactivo que deseas añadir a la sección actual.", style: TextStyle(color: Colors.grey, fontSize: 14)),
-          const SizedBox(height: 35),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 6,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 20,
+        );
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: hasFile ? Colors.green : Colors.grey, size: 24),
+                  const SizedBox(width: 16),
+                  Expanded(child: infoColumn),
+                ],
               ),
-              itemCount: BlockType.values.length - 1,
-              itemBuilder: (context, index) {
-                final type = BlockType.values[index];
-                return InkWell(
-                  onTap: () {
-                    _scheduleSetState(() => targetList.add(InteractiveBlock.create(type: type, content: {})));
-                    _notifyCourseUpdated();
-                    Navigator.pop(context);
-                  },
-                  borderRadius: BorderRadius.circular(15),
-                  child: _buildBlockCategoryIcon(type),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+              const SizedBox(height: 10),
+              Align(alignment: Alignment.centerLeft, child: actionButton),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Icon(icon, color: hasFile ? Colors.green : Colors.grey, size: 24),
+            const SizedBox(width: 20),
+            Expanded(child: infoColumn),
+            actionButton,
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildBlockCategoryIcon(BlockType type) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.indigo.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.indigo.withOpacity(0.08)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(_getIconForBlock(type), color: Colors.indigo, size: 30),
-          const SizedBox(height: 10),
-          Text(type.name, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        ],
-      ),
-    );
-  }
 
   String _getSectionTitle(String selectedSection) {
     switch (selectedSection) {
@@ -1425,29 +1504,6 @@ class _DashboardEditorState extends State<DashboardEditor> {
         ],
       ),
     );
-  }
-
-  IconData _getIconForBlock(BlockType type) {
-    switch (type) {
-      case BlockType.textPlain:
-        return Icons.format_align_left;
-      case BlockType.video:
-        return Icons.play_circle_outline;
-      case BlockType.interactiveBook:
-        return Icons.auto_stories_outlined;
-      case BlockType.accordion:
-        return Icons.list_alt_outlined;
-      case BlockType.singleChoice:
-        return Icons.check_circle_outline;
-      case BlockType.dragAndDrop:
-        return Icons.back_hand_outlined;
-      case BlockType.imageHotspot:
-        return Icons.ads_click_outlined;
-      case BlockType.carousel:
-        return Icons.view_carousel_outlined;
-      default:
-        return Icons.widgets_outlined;
-    }
   }
 
   IconData _iconForContentBankType(String type) {

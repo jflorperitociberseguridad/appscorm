@@ -169,13 +169,13 @@ class _AccordionItem extends StatelessWidget {
     final isStandard = style == AccordionStyle.standard;
 
     final baseDecoration = BoxDecoration(
-      color: isStandard ? accent.withOpacity(0.06) : Colors.transparent,
+      color: isStandard ? accent.withValues(alpha: 0.06) : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: Colors.grey.shade300),
       boxShadow: isBoxed
           ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               ),
@@ -292,7 +292,7 @@ class _AccordionControls extends StatelessWidget {
         const Text('Estilo', style: TextStyle(fontWeight: FontWeight.w600)),
         DropdownButton<AccordionStyle>(
           value: style,
-          underline: Container(height: 1, color: accent.withOpacity(0.3)),
+          underline: Container(height: 1, color: accent.withValues(alpha: 0.3)),
           items: AccordionStyle.values
               .map((value) => DropdownMenuItem(
                     value: value,
@@ -310,7 +310,7 @@ class _AccordionControls extends StatelessWidget {
             Switch(
               value: exclusive,
               onChanged: onExclusiveChanged,
-              activeColor: accent,
+              activeThumbColor: accent,
             ),
             const Text('Exclusivo', style: TextStyle(fontSize: 12)),
           ],

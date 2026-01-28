@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../creation_shared_widgets.dart';
+import '../../../models/interactive_block.dart';
 
 class EvaluationSectionView extends StatelessWidget {
   final List<ChipOption> finalExamLevelOptions;
@@ -37,6 +38,8 @@ class EvaluationSectionView extends StatelessWidget {
   final List<ChipOption> moduleTestStyleOptions;
   final String moduleTestStyle;
   final ValueChanged<String> onModuleTestStyleChanged;
+  final List<InteractiveBlock> evaluationBlocks;
+  final VoidCallback onEvaluationBlocksChanged;
 
   const EvaluationSectionView({
     super.key,
@@ -74,6 +77,8 @@ class EvaluationSectionView extends StatelessWidget {
     required this.moduleTestStyleOptions,
     required this.moduleTestStyle,
     required this.onModuleTestStyleChanged,
+    required this.evaluationBlocks,
+    required this.onEvaluationBlocksChanged,
     required this.finalExamPassScore,
     required this.onFinalExamPassScoreChanged,
   });
@@ -204,6 +209,18 @@ class EvaluationSectionView extends StatelessWidget {
                     options: moduleTestStyleOptions,
                     current: moduleTestStyle,
                     onChanged: moduleTestsEnabled ? onModuleTestStyleChanged : (_) {},
+                  ),
+                ],
+              ),
+              SectionCard(
+                title: "Bloques de evaluación final",
+                icon: Icons.quiz_outlined,
+                color: const Color(0xFF0EA5E9),
+                children: [
+                  const SectionLabel(text: "Constructor de bloques"),
+                  InteractiveBlockEditor(
+                    blocks: evaluationBlocks,
+                    onChanged: onEvaluationBlocksChanged,
                   ),
                 ],
               ),

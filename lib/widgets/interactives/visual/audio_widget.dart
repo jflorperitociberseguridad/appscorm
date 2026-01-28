@@ -103,7 +103,7 @@ class _AudioWidgetState extends State<AudioWidget> {
                   height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: accent.withOpacity(0.12),
+                    color: accent.withValues(alpha: 0.12),
                   ),
                   child: Icon(Icons.podcasts, color: accent, size: 36),
                 ),
@@ -160,7 +160,7 @@ class _AudioWidgetState extends State<AudioWidget> {
                       Slider(
                         value: progress.clamp(0.0, 1.0),
                         activeColor: accent,
-                        inactiveColor: accent.withOpacity(0.2),
+                        inactiveColor: accent.withValues(alpha: 0.2),
                         onChanged: (v) {
                           final seek = duration * v;
                           _player.seek(seek);
@@ -175,7 +175,7 @@ class _AudioWidgetState extends State<AudioWidget> {
                                       margin: const EdgeInsets.symmetric(horizontal: 1),
                                       height: max(6, amp * 20),
                                       decoration: BoxDecoration(
-                                        color: accent.withOpacity(0.4),
+                                        color: accent.withValues(alpha: 0.4),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                     ),

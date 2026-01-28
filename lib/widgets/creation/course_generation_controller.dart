@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -256,19 +257,28 @@ class CourseGenerationController {
     onLoadingChanged(true);
 
     try {
-      final blocks = _parseManuscriptBlocks(manuscript, config);
       final title = (config['title'] ?? 'Curso SCORM').toString().trim();
       final scormVersion = (config['scormVersion'] ?? '1.2').toString();
-      final moduleTitle = title.isEmpty ? 'Módulo 1' : 'Módulo 1 · $title';
-
-      final module = ModuleModel(
-        id: const Uuid().v4(),
-        title: moduleTitle,
-        order: 0,
-        blocks: blocks,
-        type: ModuleType.text,
-        content: '',
-      );
+      final modulesFromJson = _tryParseModulesFromJson(manuscript, config);
+      final modules = modulesFromJson.isNotEmpty
+          ? modulesFromJson
+          : _buildModulesFromMarkdown(
+              manuscript,
+              config,
+              fallbackTitle: title.isEmpty ? 'Módulo 1' : 'Módulo 1 · $title',
+            );
+      final moduleInstances = <ModuleModel>[];
+      for (var i = 0; i < modules.length; i++) {
+        final module = modules[i];
+        moduleInstances.add(ModuleModel(
+          id: const Uuid().v4(),
+          title: module.title,
+          order: i,
+          blocks: List<InteractiveBlock>.from(module.blocks),
+          type: module.type,
+          content: module.content,
+        ));
+      }
 
       final container = ProviderScope.containerOf(context, listen: false);
       final existingCourse = container.read(courseProvider);
@@ -277,26 +287,127 @@ class CourseGenerationController {
         title: title.isEmpty ? 'Nuevo Curso Formativo' : title,
         courseConfig: courseConfig,
         scormVersion: scormVersion,
-        modules: [module],
+        modules: moduleInstances,
       );
       course.contentBank.files = List<Map<String, String>>.from(contentBankFiles);
+      _populateGuideSectionsFromModule(course);
+      container.read(courseProvider.notifier).updateCourse(course.copyWith(modules: moduleInstances));
 
-      Future.microtask(() {
-        if (!mounted) return;
-        container.read(courseProvider.notifier).setCourse(course);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🚀 Arquitectura instruccional desplegada con éxito')),
-        );
-        _scrollEditorToTop(context);
-        final payload = course.toJson();
-        payload['_scrollToTop'] = true;
-        context.push('/course-dashboard', extra: payload);
-      });
+      if (!context.mounted) return;
+      container.read(courseProvider.notifier).updateFullCourse(course);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🚀 Arquitectura instruccional desplegada con éxito')),
+      );
+      _scrollEditorToTop(context);
+      final payload = course.toJson();
+      payload['_scrollToTop'] = true;
+      context.push('/course-dashboard', extra: payload);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
       if (mounted) onLoadingChanged(false);
+    }
+  }
+
+  void _populateGuideSectionsFromModule(CourseModel course) {
+    if (course.modules.isEmpty) return;
+    String? currentBucket;
+
+    bool hasMeaningfulBlocks(List<InteractiveBlock> blocks) {
+      for (final block in blocks) {
+        if (block.content.isEmpty) continue;
+        for (final value in block.content.values) {
+          if (value == null) continue;
+          if (value is String && value.trim().isEmpty) continue;
+          if (value is List && value.isEmpty) continue;
+          if (value is Map && value.isEmpty) continue;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    String? detectBucket(String text) {
+      final upper = text.toUpperCase();
+      if (upper.contains('INTRODUCCIÓN') || upper.contains('INTRODUCCION')) return 'intro';
+      if (upper.contains('OBJETIVOS')) return 'objectives';
+      if (upper.contains('MAPA CONCEPTUAL')) return 'map';
+      if (upper.contains('RECURSOS') || upper.contains('BIBLIOGRAF')) return 'resources';
+      if (upper.contains('GLOSARIO')) return 'glossary';
+      if (upper.contains('FAQ') || upper.contains('PREGUNTAS FRECUENTES')) return 'faq';
+      if (upper.contains('EVALUACIÓN') || upper.contains('EVALUACION') || upper.contains('EXAMEN')) return 'eval';
+      return null;
+    }
+
+    bool isModuleHeading(String text) {
+      final upper = text.toUpperCase();
+      return upper.contains('MÓDULO') || upper.contains('MODULO') || upper.startsWith('TEMA ');
+    }
+
+    List<InteractiveBlock> targetBlocks(String bucket) {
+      switch (bucket) {
+        case 'intro':
+          return course.intro.introBlocks;
+        case 'objectives':
+          return course.intro.objectiveBlocks;
+        case 'map':
+          return course.conceptMap.blocks;
+        case 'resources':
+          return course.resources.blocks;
+        case 'glossary':
+          return course.glossary.blocks;
+        case 'faq':
+          return course.faq.blocks;
+        case 'eval':
+          return course.evaluation.blocks;
+        default:
+          return <InteractiveBlock>[];
+      }
+    }
+
+    void addToBucket(String bucket, InteractiveBlock block) {
+      final target = targetBlocks(bucket);
+      if (!hasMeaningfulBlocks(target)) {
+        target
+          ..clear()
+          ..add(block);
+      } else {
+        target.add(block);
+      }
+    }
+
+    for (final module in course.modules) {
+      final remaining = <InteractiveBlock>[];
+      currentBucket = null;
+      for (final block in module.blocks) {
+        if (block.type == BlockType.textPlain || block.type == BlockType.textRich || block.type == BlockType.essay) {
+          final text = (block.content['text'] ?? '').toString();
+          if (isModuleHeading(text)) {
+            currentBucket = null;
+            remaining.add(block);
+            continue;
+          }
+          final detected = detectBucket(text);
+          if (detected != null) {
+            currentBucket = detected;
+            addToBucket(detected, block);
+            continue;
+          }
+        }
+
+        if (currentBucket != null) {
+          final bucket = currentBucket;
+          addToBucket(bucket, block);
+          continue;
+        }
+
+        remaining.add(block);
+      }
+
+      module.blocks
+        ..clear()
+        ..addAll(remaining);
     }
   }
 
@@ -331,6 +442,157 @@ class CourseGenerationController {
       stats: base?.stats,
       contentBank: base?.contentBank,
     );
+  }
+
+  List<ModuleModel> _buildModulesFromMarkdown(
+    String manuscript,
+    Map<String, dynamic> config, {
+    required String fallbackTitle,
+  }) {
+    final rawBlocks = _parseManuscriptBlocks(manuscript, config);
+    final regexModules = _splitBlocksIntoModulesByRegex(rawBlocks, fallbackTitle: fallbackTitle);
+    if (regexModules.length > 1) {
+      return regexModules;
+    }
+
+    final moduleDrafts = _splitManuscriptIntoModules(manuscript, fallbackTitle: fallbackTitle);
+    final modules = <ModuleModel>[];
+    for (var i = 0; i < moduleDrafts.length; i++) {
+      final draft = moduleDrafts[i];
+      final blocks = _parseManuscriptBlocks(draft.content, config);
+      final moduleTitle = draft.title.trim().isNotEmpty ? draft.title.trim() : 'Módulo ${i + 1}';
+      modules.add(ModuleModel(
+        id: const Uuid().v4(),
+        title: moduleTitle,
+        order: i,
+        blocks: blocks,
+        type: ModuleType.text,
+        content: '',
+      ));
+    }
+    return modules;
+  }
+
+  List<ModuleModel> _tryParseModulesFromJson(String manuscript, Map<String, dynamic> config) {
+    try {
+      final decoded = jsonDecode(manuscript);
+      if (decoded is! Map<String, dynamic>) return <ModuleModel>[];
+      final rawModules = decoded['modules'];
+      if (rawModules is! List) return <ModuleModel>[];
+      final modules = <ModuleModel>[];
+      for (var i = 0; i < rawModules.length; i++) {
+        final raw = rawModules[i];
+        if (raw is! Map) continue;
+        final map = raw.cast<String, dynamic>();
+        final title = (map['title'] ?? 'Módulo ${i + 1}').toString();
+        final blocks = <InteractiveBlock>[];
+        final rawBlocks = map['blocks'];
+        if (rawBlocks is List) {
+          for (final b in rawBlocks) {
+            if (b is! Map) continue;
+            final bMap = b.cast<String, dynamic>();
+            final typeName = (bMap['type'] ?? 'textPlain').toString();
+            final type = BlockType.values.firstWhere(
+              (e) => e.name == typeName,
+              orElse: () => BlockType.textPlain,
+            );
+            final rawContent = bMap['content'];
+            Map<String, dynamic> content;
+            if (rawContent is Map<String, dynamic>) {
+              content = Map<String, dynamic>.from(rawContent);
+            } else if (rawContent is String) {
+              content = {'text': rawContent};
+            } else {
+              content = {'text': rawContent?.toString() ?? ' '};
+            }
+            if (!content.containsKey('text') || content['text'] == null || content['text'].toString().isEmpty) {
+              content['text'] = ' ';
+            }
+            blocks.add(InteractiveBlock.create(type: type, content: content));
+          }
+        }
+        if (blocks.isEmpty) {
+          blocks.add(InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ' '}));
+        }
+        modules.add(ModuleModel(
+          id: const Uuid().v4(),
+          title: title,
+          order: i,
+          blocks: blocks,
+          type: ModuleType.text,
+          content: '',
+        ));
+      }
+      return modules;
+    } catch (_) {
+      return <ModuleModel>[];
+    }
+  }
+
+  List<ModuleModel> _splitBlocksIntoModulesByRegex(
+    List<InteractiveBlock> blocks, {
+    required String fallbackTitle,
+  }) {
+    final modules = <ModuleModel>[];
+    var currentTitle = fallbackTitle;
+    var currentBlocks = <InteractiveBlock>[];
+    final moduleRegex = RegExp(
+      r'(?:Módulo|Modulo|Tema|Sección)\\s*(\\d+)[:.\\-]?',
+      caseSensitive: false,
+    );
+    var moduleIndex = 1;
+
+    String extractText(InteractiveBlock block) {
+      final value = block.content['text'];
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    String stripHtml(String input) {
+      return input.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\\s+'), ' ').trim();
+    }
+
+    void flush() {
+      if (currentBlocks.isEmpty) return;
+      modules.add(ModuleModel(
+        id: const Uuid().v4(),
+        title: currentTitle,
+        order: modules.length,
+        blocks: currentBlocks,
+        type: ModuleType.text,
+        content: '',
+      ));
+      currentBlocks = <InteractiveBlock>[];
+    }
+
+    for (final block in blocks) {
+      final text = stripHtml(extractText(block));
+      final match = moduleRegex.firstMatch(text);
+      if (match != null) {
+        flush();
+        final number = int.tryParse(match.group(1) ?? '') ?? 0;
+        final resolvedNumber = number > 0 ? number : moduleIndex;
+        currentTitle = text.isNotEmpty ? text : 'Módulo $resolvedNumber';
+        moduleIndex = resolvedNumber + 1;
+        continue;
+      }
+      currentBlocks.add(block);
+    }
+
+    flush();
+
+    return modules.isEmpty
+        ? [
+            ModuleModel(
+              id: const Uuid().v4(),
+              title: fallbackTitle,
+              order: 0,
+              blocks: blocks,
+              type: ModuleType.text,
+              content: '',
+            )
+          ]
+        : modules;
   }
 
   List<InteractiveBlock> _parseManuscriptBlocks(String manuscript, Map<String, dynamic> config) {
@@ -429,6 +691,8 @@ class CourseGenerationController {
 
     flushParagraph();
     flushList();
+
+    _appendDemoBlocksIfMissing(blocks, manuscript, config);
 
     if (blocks.isEmpty) {
       blocks.add(_textBlock('Manuscrito sin contenido procesable.', config));
@@ -552,8 +816,61 @@ class CourseGenerationController {
     return InteractiveBlock.create(type: BlockType.singleChoice, content: content);
   }
 
+  InteractiveBlock _flashcardsBlock(String frontText, String backText, Map<String, dynamic> config) {
+    final content = <String, dynamic>{
+      'cards': [
+        {
+          'frontText': frontText,
+          'backText': backText,
+          'frontImage': '',
+          'isFlipped': false,
+          'question': frontText,
+          'answer': backText,
+        },
+      ],
+    };
+    _applyBlockDefaults(content, config);
+    return InteractiveBlock.create(type: BlockType.flashcards, content: content);
+  }
+
+  InteractiveBlock _videoBlock(String url, Map<String, dynamic> config) {
+    final content = <String, dynamic>{
+      'url': url,
+      'isLocal': false,
+    };
+    _applyBlockDefaults(content, config);
+    return InteractiveBlock.create(type: BlockType.video, content: content);
+  }
+
+  void _appendDemoBlocksIfMissing(
+    List<InteractiveBlock> blocks,
+    String manuscript,
+    Map<String, dynamic> config,
+  ) {
+    if (blocks.any((block) => _isInteractiveBlock(block.type))) {
+      return;
+    }
+
+    final lower = manuscript.toLowerCase();
+    final topic = lower.contains('seguridad')
+        ? 'seguridad'
+        : lower.contains('ventas')
+            ? 'ventas'
+            : lower.contains('calidad')
+                ? 'calidad'
+                : 'el tema central';
+
+    blocks.add(_flashcardsBlock('Concepto clave de $topic', 'Definicion resumida de $topic.', config));
+    blocks.add(_questionBlock('Pregunta: ¿Que idea principal recuerdas sobre $topic?', config));
+    blocks.add(_videoBlock('https://www.youtube.com/embed/jNQXAC9IVRw', config));
+  }
+
   InteractiveBlock _challengeBlock(String text, Map<String, dynamic> config) {
-    final clean = text.replaceAll('[RETO]', '').replaceAll('[reto]', '').replaceFirst(RegExp(r'(?i)^reto:'), '').trim();
+    final clean = text
+        .replaceAll('[RETO]', '')
+        .replaceAll('[reto]', '')
+        .replaceFirst(RegExp(r'^reto:', caseSensitive: false), '')
+        .trim();
     final content = <String, dynamic>{
       'introText': clean.isEmpty ? 'Reto pendiente' : clean,
       'imagePath': '',
@@ -640,14 +957,55 @@ class CourseGenerationController {
   }
 
   void _scrollEditorToTop(BuildContext context) {
-    Future.microtask(() {
-      final controller = PrimaryScrollController.maybeOf(context);
-      if (controller == null || !controller.hasClients) return;
-      controller.animateTo(
-        0,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOut,
-      );
-    });
+    if (!context.mounted) return;
+    final controller = PrimaryScrollController.maybeOf(context);
+    if (controller == null || !controller.hasClients) return;
+    controller.animateTo(
+      0,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+    );
   }
+
+  List<_ModuleDraft> _splitManuscriptIntoModules(String manuscript, {required String fallbackTitle}) {
+    final lines = manuscript.split('\n');
+    final modules = <_ModuleDraft>[];
+    String? currentTitle;
+    final buffer = <String>[];
+
+    void flush() {
+      if (currentTitle == null && buffer.isEmpty) return;
+      final title = (currentTitle ?? fallbackTitle).trim();
+      final content = buffer.join('\n').trim();
+      modules.add(_ModuleDraft(title: title, content: content));
+      buffer.clear();
+    }
+
+    for (final rawLine in lines) {
+      final trimmed = rawLine.trim();
+      final match = RegExp(r'^##\\s+(.*)$').firstMatch(trimmed);
+      if (match != null) {
+        flush();
+        currentTitle = match.group(1)?.trim() ?? fallbackTitle;
+        continue;
+      }
+      buffer.add(rawLine);
+    }
+
+    flush();
+
+    if (modules.isEmpty) {
+      return [_ModuleDraft(title: fallbackTitle, content: manuscript)];
+    }
+
+    final nonEmpty = modules.where((m) => m.content.trim().isNotEmpty).toList();
+    return nonEmpty.isEmpty ? [_ModuleDraft(title: fallbackTitle, content: manuscript)] : nonEmpty;
+  }
+}
+
+class _ModuleDraft {
+  final String title;
+  final String content;
+
+  const _ModuleDraft({required this.title, required this.content});
 }

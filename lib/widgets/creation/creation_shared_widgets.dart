@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../models/interactive_block.dart';
+import '../interactive_block_renderer.dart';
 
 class ChipOption {
   final String label;
@@ -54,7 +56,7 @@ class WelcomeCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 6))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -98,14 +100,14 @@ class SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
@@ -157,9 +159,79 @@ class SliderLabel extends StatelessWidget {
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(color: Colors.indigo.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: Colors.indigo.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Text("$value", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
         ),
+      ],
+    );
+  }
+}
+
+class InteractiveBlockEditor extends StatelessWidget {
+  final List<InteractiveBlock> blocks;
+  final VoidCallback onChanged;
+  final String emptyLabel;
+  final VoidCallback? onAddBlock;
+  final bool showAddButton;
+
+  const InteractiveBlockEditor({
+    super.key,
+    required this.blocks,
+    required this.onChanged,
+    this.emptyLabel = 'Sin contenido.',
+    this.onAddBlock,
+    this.showAddButton = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (blocks.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(emptyLabel, style: const TextStyle(color: Color(0xFF94A3B8))),
+          ),
+        for (int i = 0; i < blocks.length; i++)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: InteractiveBlockRenderer(block: blocks[i])),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  color: Colors.red.shade300,
+                  onPressed: () {
+                    blocks.removeAt(i);
+                    onChanged();
+                  },
+                ),
+              ],
+            ),
+          ),
+        if (showAddButton)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                if (onAddBlock != null) {
+                  onAddBlock!();
+                  return;
+                }
+                blocks.add(InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''}));
+                onChanged();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text("Agregar bloque"),
+            ),
+          ),
       ],
     );
   }
@@ -587,7 +659,7 @@ class LoadingOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black.withOpacity(0.25),
+      color: Colors.black.withValues(alpha: 0.25),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

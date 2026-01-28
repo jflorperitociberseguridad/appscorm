@@ -16,8 +16,7 @@ class AppTheme {
         seedColor: primary,
         primary: primary,
         secondary: secondary,
-        surface: surface,
-        background: background,
+        surface: background,
         error: error,
       ),
       

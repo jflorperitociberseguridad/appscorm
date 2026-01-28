@@ -113,19 +113,19 @@ class InteractiveBlock {
 // --- SUBCLASES ---
 
 class TextBlock extends InteractiveBlock {
-  TextBlock({required String id, required String content})
-      : super(id: id, type: BlockType.textPlain, content: {'text': content});
+  TextBlock({required super.id, required String content})
+      : super(type: BlockType.textPlain, content: {'text': content});
   
   String get text => content['text'] ?? ' ';
 }
 
 class ImageBlock extends InteractiveBlock {
   ImageBlock({
-    required String id, 
+    required super.id, 
+    super.type = BlockType.image,
     required String url, 
     String caption = '', 
-    BlockType type = BlockType.image 
-  }) : super(id: id, type: type, content: {'url': url, 'caption': caption});
+  }) : super(content: {'url': url, 'caption': caption});
 
   String get url => content['url'];
   String get caption => content['caption'];
@@ -133,12 +133,12 @@ class ImageBlock extends InteractiveBlock {
 
 class QuestionBlock extends InteractiveBlock {
   QuestionBlock({
-    required String id, 
+    required super.id, 
+    required super.type,
     required String question, 
     List<String> options = const [], 
     int correctIndex = 0, 
-    required BlockType type,
-  }) : super(id: id, type: type, content: {
+  }) : super(content: {
     'question': question, 
     'options': options, 
     'correctIndex': correctIndex
@@ -151,10 +151,10 @@ class QuestionBlock extends InteractiveBlock {
 
 class VideoBlock extends InteractiveBlock {
   VideoBlock({
-    required String id,
+    required super.id,
     required String url,
     bool isLocal = false,
-  }) : super(id: id, type: BlockType.video, content: {
+  }) : super(type: BlockType.video, content: {
     'url': url,
     'isLocal': isLocal,
   });

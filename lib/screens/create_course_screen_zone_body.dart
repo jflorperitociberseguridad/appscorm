@@ -15,21 +15,41 @@ extension _CreateCourseScreenZoneBody on _CreateCourseScreenState {
           inputStyle: inputStyle,
         );
       case 1:
-        return StrategySectionView(
-          inputStyle: inputStyle,
-          onSuggestObjectives: _suggestObjectivesWithAi,
-          objectivesController: _objectivesController,
-          introApproachOptions: CreationOptionSets.introApproachOptions,
-          introApproach: _introApproach,
-          onIntroApproachChanged: (v) => _scheduleSetState(() => _introApproach = v),
-          introDensity: _introDensity,
-          onIntroDensityChanged: (v) => _scheduleSetState(() => _introDensity = v),
-          objectiveCategoryOptions: CreationOptionSets.objectiveCategoryOptions,
-          objectiveCategory: _objectiveCategory,
-          onObjectiveCategoryChanged: (v) => _scheduleSetState(() => _objectiveCategory = v),
-          conceptMapOptions: CreationOptionSets.conceptMapOptions,
-          conceptMapFormat: _conceptMapFormat,
-          onConceptMapFormatChanged: (v) => _scheduleSetState(() => _conceptMapFormat = v),
+        return Consumer(
+          builder: (context, ref, _) {
+            final watched = ref.watch(courseProvider);
+            var course = watched;
+            course ??= CourseModel(
+              id: const Uuid().v4(),
+              title: 'Borrador',
+              description: '',
+              createdAt: DateTime.now(),
+              modules: [],
+            );
+            ref.read(courseProvider.notifier).setCourse(course);
+            return StrategySectionView(
+              inputStyle: inputStyle,
+              onSuggestObjectives: _suggestObjectivesWithAi,
+              objectivesController: _objectivesController,
+              introBlocks: course.intro.introBlocks,
+              objectiveBlocks: course.intro.objectiveBlocks,
+              conceptMapBlocks: course.conceptMap.blocks,
+              onIntroBlocksChanged: () => ref.read(courseProvider.notifier).updateFullCourse(course!),
+              onObjectiveBlocksChanged: () => ref.read(courseProvider.notifier).updateFullCourse(course!),
+              onConceptMapBlocksChanged: () => ref.read(courseProvider.notifier).updateFullCourse(course!),
+              introApproachOptions: CreationOptionSets.introApproachOptions,
+              introApproach: _introApproach,
+              onIntroApproachChanged: (v) => _scheduleSetState(() => _introApproach = v),
+              introDensity: _introDensity,
+              onIntroDensityChanged: (v) => _scheduleSetState(() => _introDensity = v),
+              objectiveCategoryOptions: CreationOptionSets.objectiveCategoryOptions,
+              objectiveCategory: _objectiveCategory,
+              onObjectiveCategoryChanged: (v) => _scheduleSetState(() => _objectiveCategory = v),
+              conceptMapOptions: CreationOptionSets.conceptMapOptions,
+              conceptMapFormat: _conceptMapFormat,
+              onConceptMapFormatChanged: (v) => _scheduleSetState(() => _conceptMapFormat = v),
+            );
+          },
         );
       case 2:
         return ArchitectureSectionView(
@@ -64,18 +84,38 @@ extension _CreateCourseScreenZoneBody on _CreateCourseScreenState {
           onReadingPaceChanged: (v) => _scheduleSetState(() => _readingPace = v),
         );
       case 4:
-        return SupportSectionView(
-          inputStyle: inputStyle,
-          resourcesController: _resourcesController,
-          glossaryController: _glossaryController,
-          extractionLogicOptions: CreationOptionSets.extractionLogicOptions,
-          extractionLogic: _extractionLogic,
-          onExtractionLogicChanged: (v) => _scheduleSetState(() => _extractionLogic = v),
-          faqAutomationOptions: CreationOptionSets.faqAutomationOptions,
-          faqAutomation: _faqAutomation,
-          onFaqAutomationChanged: (v) => _scheduleSetState(() => _faqAutomation = v),
-          numFaqs: _numFaqs,
-          onNumFaqsChanged: (v) => _scheduleSetState(() => _numFaqs = v),
+        return Consumer(
+          builder: (context, ref, _) {
+            final watched = ref.watch(courseProvider);
+            var course = watched;
+            course ??= CourseModel(
+              id: const Uuid().v4(),
+              title: 'Borrador',
+              description: '',
+              createdAt: DateTime.now(),
+              modules: [],
+            );
+            ref.read(courseProvider.notifier).setCourse(course);
+            return SupportSectionView(
+              inputStyle: inputStyle,
+              resourcesController: _resourcesController,
+              glossaryController: _glossaryController,
+              resourcesBlocks: course.resources.blocks,
+              glossaryBlocks: course.glossary.blocks,
+              faqBlocks: course.faq.blocks,
+              onResourcesBlocksChanged: () => ref.read(courseProvider.notifier).updateFullCourse(course!),
+              onGlossaryBlocksChanged: () => ref.read(courseProvider.notifier).updateFullCourse(course!),
+              onFaqBlocksChanged: () => ref.read(courseProvider.notifier).updateFullCourse(course!),
+              extractionLogicOptions: CreationOptionSets.extractionLogicOptions,
+              extractionLogic: _extractionLogic,
+              onExtractionLogicChanged: (v) => _scheduleSetState(() => _extractionLogic = v),
+              faqAutomationOptions: CreationOptionSets.faqAutomationOptions,
+              faqAutomation: _faqAutomation,
+              onFaqAutomationChanged: (v) => _scheduleSetState(() => _faqAutomation = v),
+              numFaqs: _numFaqs,
+              onNumFaqsChanged: (v) => _scheduleSetState(() => _numFaqs = v),
+            );
+          },
         );
       case 5:
         return InteractivitySectionView(
@@ -100,44 +140,60 @@ extension _CreateCourseScreenZoneBody on _CreateCourseScreenState {
           onImageStyleChanged: (v) => _scheduleSetState(() => _imageStyle = v),
         );
       case 7:
-        return EvaluationSectionView(
-          finalExamLevelOptions: CreationOptionSets.finalExamLevelOptions,
-          finalExamLevel: _finalExamLevel,
-          onFinalExamLevelChanged: (v) => _scheduleSetState(() => _finalExamLevel = v),
-          finalExamQuestions: _finalExamQuestions,
-          onFinalExamQuestionsChanged: (v) => _scheduleSetState(() => _finalExamQuestions = v),
-          finalExamComplexRatio: _finalExamComplexRatio,
-          onFinalExamComplexRatioChanged: (v) => _scheduleSetState(() => _finalExamComplexRatio = v),
-          finalExamTimeOptions: CreationOptionSets.finalExamTimeOptions,
-          finalExamTimeLimit: _finalExamTimeLimit,
-          onFinalExamTimeLimitChanged: (v) => _scheduleSetState(() => _finalExamTimeLimit = v),
-          finalExamShowTimer: _finalExamShowTimer,
-          onFinalExamShowTimerChanged: (v) => _scheduleSetState(() => _finalExamShowTimer = v),
-          finalExamShuffleQuestions: _finalExamShuffleQuestions,
-          onFinalExamShuffleQuestionsChanged: (v) => _scheduleSetState(() => _finalExamShuffleQuestions = v),
-          finalExamShuffleAnswers: _finalExamShuffleAnswers,
-          onFinalExamShuffleAnswersChanged: (v) => _scheduleSetState(() => _finalExamShuffleAnswers = v),
-          finalExamAllowBack: _finalExamAllowBack,
-          onFinalExamAllowBackChanged: (v) => _scheduleSetState(() => _finalExamAllowBack = v),
-          finalExamShowFeedback: _finalExamShowFeedback,
-          onFinalExamShowFeedbackChanged: (v) => _scheduleSetState(() => _finalExamShowFeedback = v),
-          finalExamGenerateDiploma: _finalExamGenerateDiploma,
-          onFinalExamGenerateDiplomaChanged: (v) => _scheduleSetState(() => _finalExamGenerateDiploma = v),
-          finalExamPassScore: _finalExamPassScore,
-          onFinalExamPassScoreChanged: (v) => _scheduleSetState(() => _finalExamPassScore = v),
-          moduleTestsEnabled: _moduleTestsEnabled,
-          onModuleTestsEnabledChanged: (v) => _scheduleSetState(() => _moduleTestsEnabled = v),
-          moduleTestQuestions: _moduleTestQuestions,
-          onModuleTestQuestionsChanged: (v) => _scheduleSetState(() => _moduleTestQuestions = v),
-          moduleTestTypeOptions: CreationOptionSets.moduleTestTypeOptions,
-          moduleTestType: _moduleTestType,
-          onModuleTestTypeChanged: (v) => _scheduleSetState(() => _moduleTestType = v),
-          moduleTestImmediateFeedback: _moduleTestImmediateFeedback,
-          onModuleTestImmediateFeedbackChanged: (v) =>
-              _scheduleSetState(() => _moduleTestImmediateFeedback = v),
-          moduleTestStyleOptions: CreationOptionSets.moduleTestStyleOptions,
-          moduleTestStyle: _moduleTestStyle,
-          onModuleTestStyleChanged: (v) => _scheduleSetState(() => _moduleTestStyle = v),
+        return Consumer(
+          builder: (context, ref, _) {
+            final watched = ref.watch(courseProvider);
+            var course = watched;
+            course ??= CourseModel(
+              id: const Uuid().v4(),
+              title: 'Borrador',
+              description: '',
+              createdAt: DateTime.now(),
+              modules: [],
+            );
+            ref.read(courseProvider.notifier).setCourse(course);
+            return EvaluationSectionView(
+              finalExamLevelOptions: CreationOptionSets.finalExamLevelOptions,
+              finalExamLevel: _finalExamLevel,
+              onFinalExamLevelChanged: (v) => _scheduleSetState(() => _finalExamLevel = v),
+              finalExamQuestions: _finalExamQuestions,
+              onFinalExamQuestionsChanged: (v) => _scheduleSetState(() => _finalExamQuestions = v),
+              finalExamComplexRatio: _finalExamComplexRatio,
+              onFinalExamComplexRatioChanged: (v) => _scheduleSetState(() => _finalExamComplexRatio = v),
+              finalExamTimeOptions: CreationOptionSets.finalExamTimeOptions,
+              finalExamTimeLimit: _finalExamTimeLimit,
+              onFinalExamTimeLimitChanged: (v) => _scheduleSetState(() => _finalExamTimeLimit = v),
+              finalExamShowTimer: _finalExamShowTimer,
+              onFinalExamShowTimerChanged: (v) => _scheduleSetState(() => _finalExamShowTimer = v),
+              finalExamShuffleQuestions: _finalExamShuffleQuestions,
+              onFinalExamShuffleQuestionsChanged: (v) => _scheduleSetState(() => _finalExamShuffleQuestions = v),
+              finalExamShuffleAnswers: _finalExamShuffleAnswers,
+              onFinalExamShuffleAnswersChanged: (v) => _scheduleSetState(() => _finalExamShuffleAnswers = v),
+              finalExamAllowBack: _finalExamAllowBack,
+              onFinalExamAllowBackChanged: (v) => _scheduleSetState(() => _finalExamAllowBack = v),
+              finalExamShowFeedback: _finalExamShowFeedback,
+              onFinalExamShowFeedbackChanged: (v) => _scheduleSetState(() => _finalExamShowFeedback = v),
+              finalExamGenerateDiploma: _finalExamGenerateDiploma,
+              onFinalExamGenerateDiplomaChanged: (v) => _scheduleSetState(() => _finalExamGenerateDiploma = v),
+              finalExamPassScore: _finalExamPassScore,
+              onFinalExamPassScoreChanged: (v) => _scheduleSetState(() => _finalExamPassScore = v),
+              moduleTestsEnabled: _moduleTestsEnabled,
+              onModuleTestsEnabledChanged: (v) => _scheduleSetState(() => _moduleTestsEnabled = v),
+              moduleTestQuestions: _moduleTestQuestions,
+              onModuleTestQuestionsChanged: (v) => _scheduleSetState(() => _moduleTestQuestions = v),
+              moduleTestTypeOptions: CreationOptionSets.moduleTestTypeOptions,
+              moduleTestType: _moduleTestType,
+              onModuleTestTypeChanged: (v) => _scheduleSetState(() => _moduleTestType = v),
+              moduleTestImmediateFeedback: _moduleTestImmediateFeedback,
+              onModuleTestImmediateFeedbackChanged: (v) =>
+                  _scheduleSetState(() => _moduleTestImmediateFeedback = v),
+              moduleTestStyleOptions: CreationOptionSets.moduleTestStyleOptions,
+              moduleTestStyle: _moduleTestStyle,
+              onModuleTestStyleChanged: (v) => _scheduleSetState(() => _moduleTestStyle = v),
+              evaluationBlocks: course.evaluation.blocks,
+              onEvaluationBlocksChanged: () => ref.read(courseProvider.notifier).updateFullCourse(course!),
+            );
+          },
         );
       case 8:
         return ScormSectionView(

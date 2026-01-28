@@ -40,7 +40,6 @@ class AiService {
   Future<CourseModel> generateCourseFromText(String text, {Map<String, dynamic>? config}) async {
     try {
       if (!_hasGeminiKey()) return _generateVisualFallback(text);
-      print("🚀 [AI] Generando curso...");
       final prompt = AiPrompts.generateCourse(text, config: _withSystemTags(config));
       final response = await _textModel!.generateContent([Content.text(prompt)]);
       
@@ -50,15 +49,14 @@ class AiService {
         try {
           final decoded = jsonDecode(cleanJson);
           if (decoded is Map<String, dynamic>) {
-            print("✅ [AI] JSON válido. Mapeando estructura...");
             return _mapJsonToCourse(decoded);
           }
-        } catch (e) {
-          print("⚠️ Error JSON: $e");
+        } catch (_) {
+          // Se ignora para permitir una salida segura.
         }
       }
-    } catch (e) {
-      print("⚠️ Error Generación: $e");
+    } catch (_) {
+      // Se ignora para permitir una salida segura.
     }
     return _generateVisualFallback(text);
   }
@@ -81,8 +79,8 @@ class AiService {
       if (response.statusCode == 200) {
         return "data:image/jpeg;base64,${base64Encode(response.bodyBytes)}";
       }
-    } catch (e) {
-      print("Error Imagen: $e");
+    } catch (_) {
+      // Se ignora para permitir una salida segura.
     }
     return null;
   }
@@ -97,7 +95,7 @@ class AiService {
       // IMPORTANTE: Aseguramos que nunca devuelva vacío
       String res = response.text?.replaceAll(RegExp(r'[*#_`]'), '').trim() ?? originalText;
       return res.isEmpty ? originalText : res;
-    } catch (e) {
+    } catch (_) {
       return originalText;
     }
   }
@@ -118,8 +116,8 @@ class AiService {
           'description': data['script'] ?? "Video relacionado"
         };
       }
-    } catch (e) {
-      print("Error Video: $e");
+    } catch (_) {
+      // Se ignora para permitir una salida segura.
     }
     return {'url': '', 'title': topic, 'description': ''};
   }
@@ -149,15 +147,16 @@ class AiService {
       if (text != null) {
         final clean = _cleanJson(text);
         try {
-            final decoded = jsonDecode(clean);
-            return decoded is Map<String, dynamic> ? decoded : {};
-        } catch (e) {
-            return {};
+          final decoded = jsonDecode(clean);
+          return decoded is Map<String, dynamic> ? decoded : {};
+        } catch (_) {
+          // Se ignora para permitir una salida segura.
+          return {};
         }
       }
       return {};
-    } catch (e) {
-      print("Error en assistBlock: $e");
+    } catch (_) {
+      // Se ignora para permitir una salida segura.
       return {};
     }
   }
@@ -226,7 +225,6 @@ class AiService {
   // ===========================================================================
   bool _hasGeminiKey() {
     if (_geminiKey.isEmpty || _textModel == null) {
-      print("⚠️ GEMINI_API_KEY no configurada. Se omite llamada a Gemini.");
       return false;
     }
     return true;

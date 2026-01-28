@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/course_model.dart';
 import '../models/module_model.dart';
+import '../providers/course_provider.dart';
 
 class DashboardSelectionController extends ChangeNotifier {
   static const List<String> dashboardSectionIds = [
@@ -119,11 +121,19 @@ class DashboardSidebar extends StatefulWidget {
 }
 
 class _DashboardSidebarState extends State<DashboardSidebar> {
+  final TextEditingController _moduleTitleController = TextEditingController();
+
   void _scheduleSetState(VoidCallback fn) {
     Future.microtask(() {
       if (!mounted) return;
       setState(fn);
     });
+  }
+
+  @override
+  void dispose() {
+    _moduleTitleController.dispose();
+    super.dispose();
   }
 
   void _deleteModule(int index) {
@@ -152,17 +162,18 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
   }
 
   void _editModuleTitle(ModuleModel module) {
-    final controller = TextEditingController(text: module.title);
+    _moduleTitleController.text = module.title;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Editar título del tema"),
         content: TextField(
-          controller: controller,
+          controller: _moduleTitleController,
           decoration: const InputDecoration(
             labelText: "Título del tema",
             border: OutlineInputBorder(),
           ),
+          onSubmitted: (_) => _submitModuleTitle(module),
         ),
         actions: [
           TextButton(
@@ -170,19 +181,24 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
             child: const Text("CANCELAR"),
           ),
           ElevatedButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) {
-                _scheduleSetState(() => module.title = value);
-                widget.onCourseUpdated();
-              }
-              Navigator.pop(context);
-            },
+            onPressed: () => _submitModuleTitle(module),
             child: const Text("GUARDAR"),
           ),
         ],
       ),
-    ).then((_) => controller.dispose());
+    );
+  }
+
+  void _submitModuleTitle(ModuleModel module) {
+    FocusScope.of(context).unfocus();
+    final value = _moduleTitleController.text.trim();
+    if (value.isNotEmpty) {
+      _scheduleSetState(() => module.title = value);
+      ProviderScope.containerOf(context, listen: false)
+          .read(courseProvider.notifier)
+          .updateModuleTitle(module.id, value);
+    }
+    Navigator.pop(context);
   }
 
   @override
@@ -292,7 +308,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
             )
           : null,
       onTap: () => widget.selectionController.selectSection(id),
-      tileColor: isSelected ? Colors.indigoAccent.withOpacity(0.1) : null,
+      tileColor: isSelected ? Colors.indigoAccent.withValues(alpha: 0.1) : null,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       dense: true,
     );
@@ -312,6 +328,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
     final id = widget.selectionController.sectionIdForModule(module);
     bool isSelected = widget.selectionController.selectedSection == id;
     return ListTile(
+      key: ValueKey('module_${module.id}'),
       contentPadding: const EdgeInsets.only(left: 40, right: 8),
       title: Text(module.title, style: TextStyle(color: isSelected ? Colors.indigoAccent : Colors.white30, fontSize: 12)),
       onTap: () => widget.selectionController.selectModule(module),

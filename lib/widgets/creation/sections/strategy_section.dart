@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import '../creation_shared_widgets.dart';
+import '../../../models/interactive_block.dart';
 
 class StrategySectionView extends StatelessWidget {
   final InputDecoration Function(String hint) inputStyle;
   final VoidCallback onSuggestObjectives;
   final TextEditingController objectivesController;
+  final List<InteractiveBlock> introBlocks;
+  final List<InteractiveBlock> objectiveBlocks;
+  final List<InteractiveBlock> conceptMapBlocks;
+  final VoidCallback onIntroBlocksChanged;
+  final VoidCallback onObjectiveBlocksChanged;
+  final VoidCallback onConceptMapBlocksChanged;
 
   final List<ChipOption> introApproachOptions;
   final String introApproach;
@@ -23,6 +30,12 @@ class StrategySectionView extends StatelessWidget {
     required this.inputStyle,
     required this.onSuggestObjectives,
     required this.objectivesController,
+    required this.introBlocks,
+    required this.objectiveBlocks,
+    required this.conceptMapBlocks,
+    required this.onIntroBlocksChanged,
+    required this.onObjectiveBlocksChanged,
+    required this.onConceptMapBlocksChanged,
     required this.introApproachOptions,
     required this.introApproach,
     required this.onIntroApproachChanged,
@@ -84,27 +97,28 @@ class StrategySectionView extends StatelessWidget {
                     onChanged: onObjectiveCategoryChanged,
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: objectivesController,
-                          decoration: inputStyle("Ej: Identificar riesgos..."),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: onSuggestObjectives,
-                        icon: const Icon(Icons.auto_awesome),
-                        label: const Text("Sugerir con IA"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F172A),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
+                  const SectionLabel(text: "Introducción (bloques)"),
+                  InteractiveBlockEditor(
+                    blocks: introBlocks,
+                    onChanged: onIntroBlocksChanged,
+                  ),
+                  const SizedBox(height: 16),
+                  const SectionLabel(text: "Objetivos (bloques)"),
+                  InteractiveBlockEditor(
+                    blocks: objectiveBlocks,
+                    onChanged: onObjectiveBlocksChanged,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: onSuggestObjectives,
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text("Sugerir con IA"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F172A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
                 ],
               ),
@@ -118,6 +132,12 @@ class StrategySectionView extends StatelessWidget {
                     options: conceptMapOptions,
                     current: conceptMapFormat,
                     onChanged: onConceptMapFormatChanged,
+                  ),
+                  const SizedBox(height: 16),
+                  const SectionLabel(text: "Mapa conceptual (bloques)"),
+                  InteractiveBlockEditor(
+                    blocks: conceptMapBlocks,
+                    onChanged: onConceptMapBlocksChanged,
                   ),
                 ],
               ),

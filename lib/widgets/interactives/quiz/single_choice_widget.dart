@@ -31,11 +31,13 @@ class _SingleChoiceWidgetState extends State<SingleChoiceWidget> {
               onChanged: (v) => widget.block.content['question'] = v,
             ),
             const Divider(),
-            ...options.asMap().entries.map((e) => ListTile(
-              leading: Radio(
-                value: e.key, 
-                groupValue: widget.block.content['correctIndex'], 
-                onChanged: (val) => setState(() => widget.block.content['correctIndex'] = val),
+            ...options.asMap().entries.map((e) {
+              final isSelected = widget.block.content['correctIndex'] == e.key;
+              return ListTile(
+              onTap: () => setState(() => widget.block.content['correctIndex'] = e.key),
+              leading: Icon(
+                isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey,
               ),
               title: TextField(
                 controller: TextEditingController(text: e.value.toString()),
@@ -46,7 +48,8 @@ class _SingleChoiceWidgetState extends State<SingleChoiceWidget> {
                 icon: const Icon(Icons.delete, color: Colors.red),
                 onPressed: () => setState(() => options.removeAt(e.key)),
               ),
-            )).toList(),
+            );
+            }),
             ElevatedButton(
               onPressed: () => setState(() => options.add("Nueva Opción")),
               child: const Text("Añadir Opción"),

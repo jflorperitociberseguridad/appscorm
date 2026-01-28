@@ -65,8 +65,8 @@ mixin _CreateCourseStateFields on State<CreateCourseScreen> {
   bool _scormDebugMode = false;
   String _scormExitBehavior = 'Auto-Commit';
   double _numFaqs = 5;
-  double _numEvalQuestions = 10;
-  String _evalType = "Opción Múltiple";
+  final double _numEvalQuestions = 10;
+  final String _evalType = "Opción Múltiple";
   String _finalExamLevel = 'Intermedio';
   double _finalExamQuestions = 20;
   double _finalExamComplexRatio = 50;

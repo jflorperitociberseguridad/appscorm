@@ -87,6 +87,7 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
       widget.onChanged(html);
       
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
       
       // Usamos el nombre escrito por el usuario o un default
       String saveKey = _nameController.text.trim().isEmpty 
@@ -94,6 +95,7 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
           : 'curso_${_nameController.text.trim().replaceAll(' ', '_').toLowerCase()}';
 
       await prefs.setString(saveKey, html);
+      if (!mounted) return;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -105,55 +107,6 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
     }
   }
 
-  // --- LÓGICA DE MENÚ IA (Restaurada de tu archivo original) ---
-  void _magicImprove() {
-    final text = _controller.document.toPlainText();
-    if (text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ Escribe algo para que la IA pueda trabajar.")),
-      );
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("🤖 Selecciona mejora:", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
-              const SizedBox(height: 15),
-              ListTile(
-                leading: const Icon(Icons.business_center, color: Colors.blue),
-                title: const Text("Profesional"),
-                onTap: () => _applyAiChange('professional'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.compress, color: Colors.orange),
-                title: const Text("Resumir"),
-                onTap: () => _applyAiChange('summarize'),
-              ),
-              const Divider(),
-              ListTile(
-                tileColor: Colors.purple.shade50,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                leading: const Icon(Icons.rocket_launch, color: Colors.purple),
-                title: const Text("Generar Misión (Columna 3)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
-                subtitle: const Text("Crea las 4 tarjetas de compromiso"),
-                onTap: () => _applyAiChange('mission_protocol'), 
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _applyAiChange(String mode) async {
     Navigator.pop(context);
     setState(() => _isLoading = true);
@@ -163,6 +116,7 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
       String aiMode = mode == 'professional' ? 'fix' : mode;
       
       final improved = await _aiService.improveText(currentText, mode: aiMode);
+      if (!mounted) return;
       
       // Convertimos el texto mejorado a Delta para el editor
       // Nota: Si improveText devuelve texto plano, lo insertamos como nuevo documento
@@ -202,11 +156,13 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
         );
       }
     );
+    if (!mounted) return;
     if (prompt == null || prompt.isEmpty) return;
 
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎨 Pintando imagen...")));
     try {
       final base64Image = await _aiService.generateImage(prompt);
+      if (!mounted) return;
       if (base64Image != null && base64Image.isNotEmpty) {
         final formattedImage = base64Image.startsWith('data:image') 
             ? base64Image 
@@ -318,11 +274,11 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               QuillToolbar.simple(
-                configurations: QuillSimpleToolbarConfigurations(
-                  controller: _controller,
+                controller: _controller,
+                configurations: const QuillSimpleToolbarConfigurations(
                   showFontFamily: false,
                   showFontSize: false,
-                  sharedConfigurations: const QuillSharedConfigurations(
+                  sharedConfigurations: QuillSharedConfigurations(
                     locale: Locale('es'),
                   ),
                 ),
@@ -423,8 +379,9 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
             color: Colors.white,
           ),
           child: QuillEditor.basic(
+            controller: _controller,
+            focusNode: _focusNode,
             configurations: QuillEditorConfigurations(
-              controller: _controller,
               placeholder: 'Escribe aquí el contenido...',
               sharedConfigurations: const QuillSharedConfigurations(
                 locale: Locale('es'),
@@ -433,7 +390,6 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
                 ImageEmbedBuilder(),
               ],
             ),
-            focusNode: _focusNode,
           ),
         ),
 

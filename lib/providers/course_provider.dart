@@ -1,15 +1,31 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart'; // Asegúrate de tener uuid importado
 import '../debug/golden_mock_course.dart';
 import '../models/course_model.dart';
 import '../models/module_model.dart';
 import '../models/interactive_block.dart';
+import '../services/storage_service.dart';
 
 class CourseNotifier extends StateNotifier<CourseModel?> {
   CourseNotifier() : super(null);
 
   void setCourse(CourseModel course) {
     state = course;
+  }
+
+  void updateFullCourse(CourseModel course) {
+    state = CourseModel.fromMap(course.toMap());
+  }
+
+  void updateCourse(CourseModel course) {
+    state = course;
+  }
+
+  Future<void> saveCourse() async {
+    final current = state;
+    if (current == null) return;
+    await StorageService().saveCourse(current.toMap());
   }
 
   void clearModules() {
@@ -151,6 +167,25 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
     if (updated) {
       state = CourseModel.fromMap(state!.toMap());
     }
+  }
+
+  void updateModuleTitle(String moduleId, String newTitle) {
+    if (state == null) return;
+    final map = state!.toMap();
+    final modules = List<Map<String, dynamic>>.from(map['modules'] as List? ?? []);
+    var updated = false;
+    for (final module in modules) {
+      if (module['id'] == moduleId) {
+        module['title'] = newTitle;
+        updated = true;
+        break;
+      }
+    }
+    if (!updated) return;
+    map['modules'] = modules;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      state = CourseModel.fromMap(map);
+    });
   }
 }
 

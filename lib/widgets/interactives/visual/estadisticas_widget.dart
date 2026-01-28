@@ -96,7 +96,7 @@ class EstadisticasWidget extends StatelessWidget {
               title: const Text("Mostrar Gráficos Detallados"),
               subtitle: const Text("Incluye desglose por módulos"),
               value: block.content['show_charts'] == true,
-              activeColor: Colors.blue,
+              activeThumbColor: Colors.blue,
               onChanged: (val) {
                 // Aquí necesitaríamos un setState si fuera Stateful, 
                 // pero como el bloque se actualiza por referencia, 

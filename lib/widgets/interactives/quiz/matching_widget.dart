@@ -218,7 +218,7 @@ class _MatchingWidgetState extends State<MatchingWidget> with TickerProviderStat
                 error: error,
                 onTap: () => onTap(id),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -290,7 +290,7 @@ class _MatchTileState extends State<_MatchTile> with SingleTickerProviderStateMi
       fillColor = Colors.red.shade50;
     } else if (widget.selected) {
       borderColor = widget.accent;
-      fillColor = widget.accent.withOpacity(0.08);
+      fillColor = widget.accent.withValues(alpha: 0.08);
     }
 
     return AnimatedBuilder(

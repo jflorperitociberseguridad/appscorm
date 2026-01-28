@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../services/storage_service.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -98,70 +97,4 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 
-  // ✅ Mantengo tu diálogo corregido por si prefieres usarlo en lugar de la pantalla completa
-  void _showSavedDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder( // ✅ Añadido para poder refrescar el diálogo al borrar
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Cursos Guardados - Cibermedida"),
-          content: SizedBox(
-            width: 500,
-            height: 400,
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: StorageService().loadCourseList(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                
-                final list = snapshot.data ?? [];
-                if (list.isEmpty) {
-                  return const Center(
-                    child: Text("No tienes cursos guardados aún.", style: TextStyle(color: Colors.grey))
-                  );
-                }
-                
-                return ListView.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final item = list[index];
-                    return ListTile(
-                      leading: const Icon(Icons.article, color: Colors.blue),
-                      title: Text(item['title'] ?? 'Sin título', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text("ID: ${item['id']}", style: const TextStyle(fontSize: 10)),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () async {
-                           await StorageService().deleteCourse(item['id']);
-                           setState(() {}); // ✅ Ahora refresca la lista dentro del diálogo
-                           if (context.mounted) {
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(content: Text("Curso eliminado correctamente"))
-                             );
-                           }
-                        },
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.push('/course-dashboard', extra: item);
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: const Text("Cerrar")
-            )
-          ],
-        ),
-      ),
-    );
-  }
 }

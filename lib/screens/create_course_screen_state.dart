@@ -32,6 +32,19 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> with _CreateCou
     super.dispose();
   }
 
+  bool _hasContentBankInput(String notes) {
+    if (notes.trim().isNotEmpty) return true;
+    for (final file in _contentBankFiles) {
+      final name = file['name']?.trim() ?? '';
+      final path = file['path']?.trim() ?? '';
+      final extension = file['extension']?.trim() ?? '';
+      if (name.isNotEmpty || path.isNotEmpty || extension.isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,30 +138,45 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> with _CreateCou
               ),
               const VerticalDivider(width: 1),
               Expanded(
-                child: Column(
-                  children: [
-                    Expanded(child: _buildZoneBody()),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 60,
-                        child: ElevatedButton.icon(
-                          onPressed: _startManuscriptFlow,
-                          icon: const Icon(Icons.bolt, color: Colors.white, size: 28),
-                          label: const Text(
-                            "GENERAR CURSO COMPLETO",
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6200EE),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 4,
-                          ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        child: Column(
+                          children: [
+                            _buildZoneBody(),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 60,
+                                child: ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: _contentBankNotesController,
+                                  builder: (context, value, child) {
+                                    final canGenerate = _hasContentBankInput(value.text);
+                                    return ElevatedButton.icon(
+                                      onPressed: canGenerate ? _startManuscriptFlow : null,
+                                      icon: const Icon(Icons.bolt, color: Colors.white, size: 28),
+                                      label: const Text(
+                                        "GENERAR CURSO COMPLETO",
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF6200EE),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                        elevation: 4,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],

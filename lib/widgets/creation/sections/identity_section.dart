@@ -33,8 +33,8 @@ class IdentitySectionView extends StatelessWidget {
             title: const Text("Identidad del curso"),
             initiallyExpanded: true,
             children: [
-              WelcomeCard(
-                steps: const [
+              const WelcomeCard(
+                steps: [
                   GuideStepData(index: "1", text: "Configura el ADN del curso"),
                   GuideStepData(index: "2", text: "Sube tus fuentes al Banco"),
                   GuideStepData(index: "3", text: "Pulsa Generar para construir la estructura"),

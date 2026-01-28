@@ -310,9 +310,9 @@ class _TabsWidgetState extends State<TabsWidget> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: selected ? accent : (isPills ? accent.withOpacity(0.12) : Colors.transparent),
+                  color: selected ? accent : (isPills ? accent.withValues(alpha: 0.12) : Colors.transparent),
                   borderRadius: BorderRadius.circular(isPills ? 999 : 12),
-                  border: Border.all(color: selected ? accent : accent.withOpacity(0.4)),
+                  border: Border.all(color: selected ? accent : accent.withValues(alpha: 0.4)),
                 ),
                 child: DefaultTextStyle(
                   style: TextStyle(
@@ -354,7 +354,7 @@ class _TabsWidgetState extends State<TabsWidget> {
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withOpacity(0.15)),
+        border: Border.all(color: accent.withValues(alpha: 0.15)),
       ),
       child: MarkdownBody(
         data: content.isEmpty ? 'Sin contenido.' : content,

@@ -255,9 +255,9 @@ class _ScenarioWidgetState extends State<ScenarioWidget> {
                   key: const ValueKey('feedback'),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: feedbackColor.withOpacity(0.08),
+                    color: feedbackColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: feedbackColor.withOpacity(0.4)),
+                    border: Border.all(color: feedbackColor.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,9 +294,9 @@ class _ScenarioAvatar extends StatelessWidget {
     return Container(
       height: 180,
       decoration: BoxDecoration(
-        color: accent.withOpacity(0.08),
+        color: accent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withOpacity(0.3)),
+        border: Border.all(color: accent.withValues(alpha: 0.3)),
       ),
       child: hasImage
           ? ClipRRect(
@@ -412,7 +412,7 @@ class _ScenarioEditor extends StatelessWidget {
                           const Text('Correcta', style: TextStyle(fontSize: 12)),
                           Switch(
                             value: option['isCorrect'] == true,
-                            activeColor: accent,
+                            activeThumbColor: accent,
                             onChanged: (v) {
                               option['isCorrect'] = v;
                               onOptionsChanged(List<Map<String, dynamic>>.from(options));
@@ -450,9 +450,9 @@ class _SpeechBubble extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: accent.withOpacity(0.08),
+        color: accent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withOpacity(0.3)),
+        border: Border.all(color: accent.withValues(alpha: 0.3)),
       ),
       child: Text(
         text,
@@ -478,13 +478,13 @@ class _OptionButton extends StatelessWidget {
     return OutlinedButton(
       onPressed: onPressed,
       style: ButtonStyle(
-        side: MaterialStateProperty.all(BorderSide(color: accent.withOpacity(0.4))),
-        padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-        shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-        overlayColor: MaterialStateProperty.resolveWith(
-          (states) => states.contains(MaterialState.hovered)
-              ? accent.withOpacity(0.08)
-              : accent.withOpacity(0.04),
+        side: WidgetStateProperty.all(BorderSide(color: accent.withValues(alpha: 0.4))),
+        padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+        shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.hovered)
+              ? accent.withValues(alpha: 0.08)
+              : accent.withValues(alpha: 0.04),
         ),
       ),
       child: Text(

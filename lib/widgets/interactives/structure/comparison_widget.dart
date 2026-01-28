@@ -221,7 +221,7 @@ class _ComparisonWidgetState extends State<ComparisonWidget> {
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withOpacity(0.2)),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +260,7 @@ class _ComparisonWidgetState extends State<ComparisonWidget> {
                   decoration: BoxDecoration(
                     color: visited ? accent : Colors.white,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: accent.withOpacity(0.3)),
+                    border: Border.all(color: accent.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     entry.value,
@@ -285,7 +285,7 @@ class _ComparisonWidgetState extends State<ComparisonWidget> {
     final header = Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: accent.withOpacity(0.08),
+        color: accent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -316,7 +316,7 @@ class _ComparisonWidgetState extends State<ComparisonWidget> {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: aVisited ? accent.withOpacity(0.18) : Colors.grey.shade50,
+                      color: aVisited ? accent.withValues(alpha: 0.18) : Colors.grey.shade50,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(aText, style: const TextStyle(fontSize: 13)),
@@ -330,7 +330,7 @@ class _ComparisonWidgetState extends State<ComparisonWidget> {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: bVisited ? accent.withOpacity(0.18) : Colors.grey.shade50,
+                      color: bVisited ? accent.withValues(alpha: 0.18) : Colors.grey.shade50,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(bText, style: const TextStyle(fontSize: 13)),
@@ -420,7 +420,7 @@ class _ComparisonWidgetState extends State<ComparisonWidget> {
                         child: Container(
                           width: 24,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withValues(alpha: 0.85),
                             border: Border.all(color: accent),
                           ),
                           child: Icon(Icons.drag_handle, color: accent),

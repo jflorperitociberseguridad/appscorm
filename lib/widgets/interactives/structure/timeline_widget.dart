@@ -166,7 +166,7 @@ class _TimelineWidgetState extends State<TimelineWidget> {
                       value: _style,
                       underline: Container(
                         height: 1,
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                       ),
                       onChanged: (value) {
                         if (value == null) return;
@@ -423,7 +423,7 @@ class _TimelineRow extends StatelessWidget {
                     width: 26,
                     height: 26,
                     decoration: BoxDecoration(
-                      color: accent.withOpacity(0.12),
+                      color: accent.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                       border: Border.all(color: accent, width: 1.2),
                     ),
@@ -481,7 +481,7 @@ class _TimelineCard extends StatelessWidget {
             ? null
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),

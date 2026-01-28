@@ -15,6 +15,19 @@ class ManuscriptLogicHandler {
   })  : manuscriptService = manuscriptService ?? ManuscriptService(),
         courseGenerationController = courseGenerationController ?? CourseGenerationController();
 
+  bool _hasContentBankInput(List<Map<String, String>> contentBankFiles, String contentBankNotes) {
+    if (contentBankNotes.trim().isNotEmpty) return true;
+    for (final file in contentBankFiles) {
+      final name = file['name']?.trim() ?? '';
+      final path = file['path']?.trim() ?? '';
+      final extension = file['extension']?.trim() ?? '';
+      if (name.isNotEmpty || path.isNotEmpty || extension.isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   Future<void> startManuscriptFlow({
     required BuildContext context,
     required bool mounted,
@@ -27,14 +40,13 @@ class ManuscriptLogicHandler {
     required void Function(String message) onLoadingMessage,
     required void Function(bool value) onLoadingChanged,
   }) async {
-    print('DEBUG: Iniciando flujo de Manuscrito');
     if (title.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("⚠️ El título del curso es obligatorio.")),
       );
       return;
     }
-    if (contentBankFiles.isEmpty && contentBankNotes.trim().isEmpty) {
+    if (!_hasContentBankInput(contentBankFiles, contentBankNotes)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor, añade contenido al banco antes de generar el manuscrito'),
@@ -59,48 +71,43 @@ class ManuscriptLogicHandler {
         contentBankText: sourceText,
         generationConfig: generationConfig,
       );
+      if (!context.mounted) return;
       if (!mounted) return;
       if (!result.success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor, añade contenido al banco antes de generar el manuscrito'),
+          SnackBar(
+            content: Text(result.reason?.isNotEmpty == true ? result.reason! : 'No fue posible generar el manuscrito.'),
           ),
         );
         return;
       }
       final manuscript = result.markdown;
-      print('DEBUG: Manuscrito recibido');
-
-      Future.microtask(() {
-        if (!mounted) return;
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => ManuscriptViewerOverlay(
-            manuscriptMarkdown: manuscript,
-            onValidate: () {
-              Navigator.of(context).pop();
-              courseGenerationController.generateCourseFromManuscript(
-                context: context,
-                manuscript: manuscript,
-                config: generationConfig,
-                contentBankFiles: contentBankFiles,
-                courseConfig: courseConfig,
-                onLoadingMessage: onLoadingMessage,
-                onLoadingChanged: onLoadingChanged,
-                mounted: mounted,
-              );
-            },
-          ),
-        );
-      });
+      if (!context.mounted) return;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => ManuscriptViewerOverlay(
+          manuscriptMarkdown: manuscript,
+          onValidate: () {
+            Navigator.of(context).pop();
+            courseGenerationController.generateCourseFromManuscript(
+              context: context,
+              manuscript: manuscript,
+              config: generationConfig,
+              contentBankFiles: contentBankFiles,
+              courseConfig: courseConfig,
+              onLoadingMessage: onLoadingMessage,
+              onLoadingChanged: onLoadingChanged,
+              mounted: mounted,
+            );
+          },
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, añade contenido al banco antes de generar el manuscrito'),
-        ),
+        SnackBar(content: Text('No fue posible generar el manuscrito: $e')),
       );
     } finally {
       if (mounted) onLoadingChanged(false);

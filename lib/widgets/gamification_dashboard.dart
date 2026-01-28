@@ -284,7 +284,7 @@ class _GamificationDashboardState extends ConsumerState<GamificationDashboard> w
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<_CalendarEntryType>(
-                value: selectedType,
+                initialValue: selectedType,
                 decoration: const InputDecoration(
                   labelText: "Tipo",
                   border: OutlineInputBorder(),
@@ -416,7 +416,7 @@ class _GamificationDashboardState extends ConsumerState<GamificationDashboard> w
     });
 
     // Tamaño típico panel lateral
-    final width = 340.0;
+    const width = 340.0;
 
     return Container(
       width: width,
@@ -424,7 +424,7 @@ class _GamificationDashboardState extends ConsumerState<GamificationDashboard> w
         color: Colors.white,
         border: Border(left: BorderSide(color: Colors.grey.shade200)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(-5, 0)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(-5, 0)),
         ],
       ),
       child: SafeArea(
@@ -554,7 +554,7 @@ class _GamificationDashboardState extends ConsumerState<GamificationDashboard> w
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0xFFFEFEFF), boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+        BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))
       ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -671,7 +671,7 @@ class _GamificationDashboardState extends ConsumerState<GamificationDashboard> w
       constraints: const BoxConstraints(minHeight: 160, maxHeight: 280),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0xFFFFFFFF), boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+        BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))
       ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -775,12 +775,12 @@ class _GamificationDashboardState extends ConsumerState<GamificationDashboard> w
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0xFFFFFFFF), boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+        BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))
       ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: const [
+          const Row(children: [
             Icon(Icons.emoji_events_outlined, color: Color(0xFF2563EB)),
             SizedBox(width: 8),
             Text('Proximos Hitos', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -817,17 +817,17 @@ class _GamificationDashboardState extends ConsumerState<GamificationDashboard> w
         decoration: BoxDecoration(
           color: const Color(0xFF2563EB),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Icon(Icons.headset_mic, color: Colors.white, size: 28),
             const SizedBox(width: 12),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text('Servicio Tecnico de Cibermedia', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   SizedBox(height: 6),
                   Text('Centro de ayuda y IA', style: TextStyle(color: Colors.white70)),
@@ -1028,7 +1028,7 @@ class _SupportScreenState extends State<SupportScreen> {
       _aiResponse = null;
     });
     final aiService = AiService();
-    final guide = 'Guia rapida AppScorm: revisar contenido, exportacion SCORM, y sincronizacion de modulos.';
+    const guide = 'Guia rapida AppScorm: revisar contenido, exportacion SCORM, y sincronizacion de modulos.';
     final response = await aiService.analyzeDocument('Consulta: $issue\n$guide');
     if (!mounted) return;
     _scheduleSetState(() {

@@ -143,6 +143,54 @@ class CourseModel {
       config: CourseConfig.fromMap(map['config'] ?? {}),
     );
   }
+
+  CourseModel copyWith({
+    String? id,
+    String? userId,
+    String? title,
+    String? description,
+    DateTime? createdAt,
+    String? scormVersion,
+    CourseConfig? config,
+    String? introText,
+    List<String>? objectives,
+    List<GlossaryItem>? glossaryItems,
+    List<FaqItem>? faqItems,
+    GeneralSection? general,
+    IntroSection? intro,
+    MapSection? conceptMap,
+    List<ModuleModel>? modules,
+    ResourcesSection? resources,
+    GlossarySection? glossary,
+    FaqSection? faq,
+    EvaluationSection? evaluation,
+    StatsSection? stats,
+    ContentBankSection? contentBank,
+  }) {
+    return CourseModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      scormVersion: scormVersion ?? this.scormVersion,
+      config: config ?? this.config,
+      introText: introText ?? this.introText,
+      objectives: objectives ?? this.objectives,
+      glossaryItems: glossaryItems ?? this.glossaryItems,
+      faqItems: faqItems ?? this.faqItems,
+      general: general ?? this.general,
+      intro: intro ?? this.intro,
+      conceptMap: conceptMap ?? this.conceptMap,
+      modules: modules ?? this.modules,
+      resources: resources ?? this.resources,
+      glossary: glossary ?? this.glossary,
+      faq: faq ?? this.faq,
+      evaluation: evaluation ?? this.evaluation,
+      stats: stats ?? this.stats,
+      contentBank: contentBank ?? this.contentBank,
+    );
+  }
 }
 
 // =============================================================================

@@ -46,7 +46,11 @@ class _CourseDashboardScreenState extends ConsumerState<CourseDashboardScreen> {
   }
 
   void _initCourse() {
-    if (widget.courseData != null) {
+    final existingCourse = ref.read(courseProvider);
+    final existingBlockCount = existingCourse?.modules.fold<int>(0, (sum, module) => sum + module.blocks.length) ?? 0;
+    if (existingCourse != null && existingBlockCount > 0) {
+      _course = CourseModel.fromMap(existingCourse.toMap());
+    } else if (widget.courseData != null) {
       try {
         _course = CourseModel.fromMap(widget.courseData!);
       } catch (e) {

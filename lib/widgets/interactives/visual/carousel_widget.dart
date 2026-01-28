@@ -157,7 +157,7 @@ class _CarouselWidgetState extends State<CarouselWidget> {
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        Colors.black.withOpacity(0.65),
+                                        Colors.black.withValues(alpha: 0.65),
                                         Colors.transparent,
                                       ],
                                       begin: Alignment.bottomCenter,

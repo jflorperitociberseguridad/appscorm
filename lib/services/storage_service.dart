@@ -10,15 +10,12 @@ class StorageService {
       final String? data = prefs.getString(_storageKey);
       
       if (data == null) {
-        print("📁 Storage: No hay cursos guardados aún.");
         return [];
       }
 
       final List<dynamic> decoded = jsonDecode(data);
-      print("📁 Storage: Cargados ${decoded.length} cursos.");
       return decoded.cast<Map<String, dynamic>>();
-    } catch (e) {
-      print("❌ Error cargando cursos: $e");
+    } catch (_) {
       return [];
     }
   }
@@ -32,21 +29,13 @@ class StorageService {
 
       if (index >= 0) {
         currentList[index] = courseData;
-        print("🔄 Storage: Actualizando curso existente: ${courseData['title']}");
       } else {
         currentList.add(courseData);
-        print("➕ Storage: Guardando nuevo curso: ${courseData['title']}");
       }
 
-      // Guardamos y forzamos el guardado
-      bool success = await prefs.setString(_storageKey, jsonEncode(currentList));
-      if (success) {
-        print("✅ Curso guardado correctamente en local");
-      } else {
-        print("⚠️ No se pudo confirmar el guardado en SharedPreferences");
-      }
-    } catch (e) {
-      print("❌ Error guardando curso: $e");
+      await prefs.setString(_storageKey, jsonEncode(currentList));
+    } catch (_) {
+      // Se ignora para permitir una salida segura.
     }
   }
 
@@ -57,9 +46,8 @@ class StorageService {
       
       currentList.removeWhere((c) => c['id'] == courseId);
       await prefs.setString(_storageKey, jsonEncode(currentList));
-      print("🗑️ Storage: Curso eliminado: $courseId");
-    } catch (e) {
-      print("❌ Error borrando curso: $e");
+    } catch (_) {
+      // Se ignora para permitir una salida segura.
     }
   }
 }

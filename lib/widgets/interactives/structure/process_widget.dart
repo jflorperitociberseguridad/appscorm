@@ -72,7 +72,7 @@ class _ProcessWidgetState extends State<ProcessWidget> {
                 onPressed: () => setState(() => steps.removeAt(e.key)),
               ),
             );
-          }).toList()
+          })
         ],
       ),
     );
