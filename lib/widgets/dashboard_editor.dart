@@ -704,7 +704,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
                   child: _BlockToolbar(
                     sectionId: selectedSection,
                     onBlockSelected: (type, initialContent) => _addBlockToSection(
-                      sectionId,
+                      selectedSection,
                       type,
                       initialContent: initialContent,
                     ),

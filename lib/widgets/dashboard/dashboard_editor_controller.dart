@@ -339,12 +339,14 @@ class _BlockFamily {
   final String id;
   final String label;
   final String description;
+  final Color color;
   final List<_BlockToolEntry> blocks;
 
   const _BlockFamily({
     required this.id,
     required this.label,
     required this.description,
+    required this.color,
     required this.blocks,
   });
 }
@@ -370,6 +372,7 @@ const List<_BlockFamily> _blockFamilies = [
     id: 'fundamentos',
     label: 'Fundamentos',
     description: 'Transmitir la teoría y los conceptos clave de forma clara.',
+    color: Colors.indigo,
     blocks: [
       _BlockToolEntry(
         type: BlockType.textRich,
@@ -412,6 +415,7 @@ const List<_BlockFamily> _blockFamilies = [
     id: 'organizacion',
     label: 'Organización',
     description: 'Fragmentar información compleja para evitar la fatiga cognitiva.',
+    color: Colors.teal,
     blocks: [
       _BlockToolEntry(
         type: BlockType.textRich,
@@ -450,6 +454,7 @@ const List<_BlockFamily> _blockFamilies = [
     id: 'multimedia',
     label: 'Multimedia',
     description: 'Aportar contexto visual y auditivo de alto impacto.',
+    color: Colors.orange,
     blocks: [
       _BlockToolEntry(
         type: BlockType.image,
@@ -487,6 +492,7 @@ const List<_BlockFamily> _blockFamilies = [
     id: 'interactividad',
     label: 'Interactividad',
     description: 'Fomentar el compromiso mediante dinámicas de gamificación.',
+    color: Colors.green,
     blocks: [
       _BlockToolEntry(
         type: BlockType.flashcards,
@@ -512,6 +518,7 @@ const List<_BlockFamily> _blockFamilies = [
     id: 'comprobacion',
     label: 'Comprobación',
     description: 'Retos cortos para validar que el alumno sigue el hilo del curso.',
+    color: Colors.red,
     blocks: [
       _BlockToolEntry(
         type: BlockType.singleChoice,
@@ -537,6 +544,7 @@ const List<_BlockFamily> _blockFamilies = [
     id: 'retos',
     label: 'Retos',
     description: 'Evaluación de desempeño y retos de aplicación activa.',
+    color: Colors.purple,
     blocks: [
       _BlockToolEntry(
         type: BlockType.fillBlanks,
