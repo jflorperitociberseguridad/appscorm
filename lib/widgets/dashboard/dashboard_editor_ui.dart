@@ -225,6 +225,7 @@ Widget _buildMainContentArea(String selectedSection) {
         ),
       ],
     ),
+  ),
   );
 }
 
