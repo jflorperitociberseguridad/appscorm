@@ -22,9 +22,11 @@ class AiService {
 
   AiService._(this._textModel);
 
+  static const _geminiKeyName = 'gemini_api_key';
+
   static Future<AiService> create() async {
     final secrets = await SecretLoader.load();
-    final apiKey = secrets['gemini_api_key'] ?? '';
+    final apiKey = secrets[_geminiKeyName] ?? '';
     if (apiKey.isEmpty) {
       debugPrint(
         '⚠️ gemini_api_key ausente en secrets.json. Las llamadas a Gemini se desactivan hasta que se añada la clave.',

@@ -13,15 +13,21 @@ class SecretLoader {
   /// or invalid, and logs a warning so developers can restore it manually.
   static Future<Map<String, String>> load() async {
     try {
+      debugPrint('🔐 SecretLoader: cargando $_assetPath');
       final content = await rootBundle.loadString(_assetPath);
       if (content.trim().isEmpty) {
         _logMissing();
         return {};
       }
+      debugPrint('🔐 SecretLoader: contenido cargado (${content.length} caracteres)');
 
       final raw = json.decode(content) as Map<String, dynamic>;
-      return raw.map((key, value) => MapEntry(key, value?.toString() ?? ''));
+      return raw.map((key, value) {
+        final lowerKey = (key ?? '').toString().toLowerCase();
+        return MapEntry(lowerKey, value?.toString() ?? '');
+      });
     } catch (error) {
+      debugPrint('🔐 SecretLoader: error cargando $_assetPath -> $error');
       if (error is FlutterError) {
         _logMissing();
       } else if (error is FormatException) {

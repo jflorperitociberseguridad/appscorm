@@ -8,6 +8,7 @@ import 'config/secret_loader.dart';
 
 class ManuscriptService {
   static const String _geminiReferer = 'http://localhost:8080';
+  static const String _geminiKeyName = 'gemini_api_key';
 
   late final http.Client _geminiHttpClient;
   late final Future<GenerativeModel?> _textModelFuture;
@@ -19,7 +20,7 @@ class ManuscriptService {
 
   Future<GenerativeModel?> _loadTextModel() async {
     final secrets = await SecretLoader.load();
-    final apiKey = secrets['gemini_api_key'] ?? '';
+    final apiKey = secrets[_geminiKeyName] ?? '';
     if (apiKey.isEmpty) {
       debugPrint(
         '⚠️ gemini_api_key ausente en secrets.json. Las llamadas a Gemini se desactivan hasta que se añada la clave.',
