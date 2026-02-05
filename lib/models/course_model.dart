@@ -16,18 +16,19 @@ class CourseModel {
   List<String> objectives;
   List<GlossaryItem> glossaryItems;
   List<FaqItem> faqItems;
-  
+
   // --- SECCIONES ESTRUCTURALES (11 PUNTOS) ---
-  GeneralSection general;         // 1.1
-  IntroSection intro;             // 1.2 y 1.3
-  MapSection conceptMap;          // 1.4 (Añadido para completar estructura)
+  GeneralSection general; // 1.1
+  IntroSection intro; // 1.2 y 1.3
+  MapSection conceptMap; // 1.4 (Añadido para completar estructura)
   final List<ModuleModel> modules; // 2. Módulos y Temario
-  ResourcesSection resources;     // 6.
-  GlossarySection glossary;       // 7.
-  FaqSection faq;                 // 8.
-  EvaluationSection evaluation;   // 9.
-  StatsSection stats;             // 10.
+  ResourcesSection resources; // 6.
+  GlossarySection glossary; // 7.
+  FaqSection faq; // 8.
+  EvaluationSection evaluation; // 9.
+  StatsSection stats; // 10.
   ContentBankSection contentBank; // 11.
+  ModuleModel? referenceModule;
 
   CourseModel({
     required this.id,
@@ -51,23 +52,24 @@ class CourseModel {
     EvaluationSection? evaluation,
     StatsSection? stats,
     ContentBankSection? contentBank,
-  }) : 
-    objectives = objectives ?? <String>[],
-    glossaryItems = glossaryItems ?? <GlossaryItem>[],
-    faqItems = faqItems ?? <FaqItem>[],
-    general = general ?? GeneralSection(),
-    intro = intro ?? IntroSection(),
-    conceptMap = conceptMap ?? MapSection(),
-    resources = resources ?? ResourcesSection(),
-    glossary = glossary ?? GlossarySection(),
-    faq = faq ?? FaqSection(),
-    evaluation = evaluation ?? EvaluationSection(),
-    stats = stats ?? StatsSection(),
-    contentBank = contentBank ?? ContentBankSection(),
-    config = config ?? CourseConfig();
+    this.referenceModule,
+  })  : objectives = objectives ?? <String>[],
+        glossaryItems = glossaryItems ?? <GlossaryItem>[],
+        faqItems = faqItems ?? <FaqItem>[],
+        general = general ?? GeneralSection(),
+        intro = intro ?? IntroSection(),
+        conceptMap = conceptMap ?? MapSection(),
+        resources = resources ?? ResourcesSection(),
+        glossary = glossary ?? GlossarySection(),
+        faq = faq ?? FaqSection(),
+        evaluation = evaluation ?? EvaluationSection(),
+        stats = stats ?? StatsSection(),
+        contentBank = contentBank ?? ContentBankSection(),
+        config = config ?? CourseConfig();
 
   Map<String, dynamic> toJson() => toMap();
-  factory CourseModel.fromJson(Map<String, dynamic> json) => CourseModel.fromMap(json);
+  factory CourseModel.fromJson(Map<String, dynamic> json) =>
+      CourseModel.fromMap(json);
 
   Map<String, dynamic> toMap() {
     return {
@@ -91,6 +93,7 @@ class CourseModel {
       'evaluation': evaluation.toMap(),
       'stats': stats.toMap(),
       'content_bank': contentBank.toMap(),
+      'reference_module': referenceModule?.toMap(),
       'config': config.toMap(),
     };
   }
@@ -128,18 +131,23 @@ class CourseModel {
               return FaqItem(question: item.toString(), answer: '');
             }).toList()
           : <FaqItem>[],
-      modules: List<ModuleModel>.from((map['modules'] as List? ?? []).map((x) => ModuleModel.fromMap(x))),
+      modules: List<ModuleModel>.from(
+          (map['modules'] as List? ?? []).map((x) => ModuleModel.fromMap(x))),
       general: GeneralSection.fromMap(map['general'] ?? {}),
       intro: IntroSection.fromMap(
           map['intro_section'] ?? (introValue is Map ? introValue : {})),
       conceptMap: MapSection.fromMap(map['conceptMap'] ?? {}),
       resources: ResourcesSection.fromMap(map['resources'] ?? {}),
-      glossary: GlossarySection.fromMap(
-          map['glossary_section'] ?? (glossaryValue is Map ? glossaryValue : {})),
+      glossary: GlossarySection.fromMap(map['glossary_section'] ??
+          (glossaryValue is Map ? glossaryValue : {})),
       faq: FaqSection.fromMap(map['faq'] ?? {}),
       evaluation: EvaluationSection.fromMap(map['evaluation'] ?? {}),
       stats: StatsSection.fromMap(map['stats'] ?? {}),
       contentBank: ContentBankSection.fromMap(map['content_bank'] ?? {}),
+      referenceModule: map['reference_module'] is Map<String, dynamic>
+          ? ModuleModel.fromMap(
+              Map<String, dynamic>.from(map['reference_module']))
+          : null,
       config: CourseConfig.fromMap(map['config'] ?? {}),
     );
   }
@@ -166,6 +174,7 @@ class CourseModel {
     EvaluationSection? evaluation,
     StatsSection? stats,
     ContentBankSection? contentBank,
+    ModuleModel? referenceModule,
   }) {
     return CourseModel(
       id: id ?? this.id,
@@ -189,6 +198,7 @@ class CourseModel {
       evaluation: evaluation ?? this.evaluation,
       stats: stats ?? this.stats,
       contentBank: contentBank ?? this.contentBank,
+      referenceModule: referenceModule ?? this.referenceModule,
     );
   }
 }
@@ -247,56 +257,56 @@ class CourseConfig {
   }) : compatibilityPatches = compatibilityPatches ?? <String>[];
 
   Map<String, dynamic> toMap() => {
-    'target_lms': targetLms,
-    'compatibility_patches': compatibilityPatches,
-    'password_protection_enabled': passwordProtectionEnabled,
-    'password': password,
-    'domain_restriction_enabled': domainRestrictionEnabled,
-    'allowed_domain': allowedDomain,
-    'expiration_date': expirationDate,
-    'offline_mode_enabled': offlineModeEnabled,
-    'wcag_level': wcagLevel,
-    'gdpr_compliance': gdprCompliance,
-    'anonymize_learner_data': anonymizeLearnerData,
-    'xapi_enabled': xApiEnabled,
-    'lrs_url': lrsUrl,
-    'lrs_key': lrsKey,
-    'lrs_secret': lrsSecret,
-    'xapi_data_density': xApiDataDensity,
-    'support_email': supportEmail,
-    'support_phone': supportPhone,
-    'documentation_url': documentationUrl,
-    'version_tag': versionTag,
-    'change_log': changeLog,
-    'ecosystem_notes': ecosystemNotes,
-  };
+        'target_lms': targetLms,
+        'compatibility_patches': compatibilityPatches,
+        'password_protection_enabled': passwordProtectionEnabled,
+        'password': password,
+        'domain_restriction_enabled': domainRestrictionEnabled,
+        'allowed_domain': allowedDomain,
+        'expiration_date': expirationDate,
+        'offline_mode_enabled': offlineModeEnabled,
+        'wcag_level': wcagLevel,
+        'gdpr_compliance': gdprCompliance,
+        'anonymize_learner_data': anonymizeLearnerData,
+        'xapi_enabled': xApiEnabled,
+        'lrs_url': lrsUrl,
+        'lrs_key': lrsKey,
+        'lrs_secret': lrsSecret,
+        'xapi_data_density': xApiDataDensity,
+        'support_email': supportEmail,
+        'support_phone': supportPhone,
+        'documentation_url': documentationUrl,
+        'version_tag': versionTag,
+        'change_log': changeLog,
+        'ecosystem_notes': ecosystemNotes,
+      };
 
   factory CourseConfig.fromMap(Map<String, dynamic> map) => CourseConfig(
-    targetLms: map['target_lms'] ?? 'Genérico',
-    compatibilityPatches: (map['compatibility_patches'] as List? ?? [])
-        .map((item) => item.toString())
-        .toList(),
-    passwordProtectionEnabled: map['password_protection_enabled'] ?? false,
-    password: map['password'] ?? '',
-    domainRestrictionEnabled: map['domain_restriction_enabled'] ?? false,
-    allowedDomain: map['allowed_domain'] ?? '',
-    expirationDate: map['expiration_date'] ?? '',
-    offlineModeEnabled: map['offline_mode_enabled'] ?? false,
-    wcagLevel: map['wcag_level'] ?? 'Sin requisitos',
-    gdprCompliance: map['gdpr_compliance'] ?? false,
-    anonymizeLearnerData: map['anonymize_learner_data'] ?? false,
-    xApiEnabled: map['xapi_enabled'] ?? false,
-    lrsUrl: map['lrs_url'] ?? '',
-    lrsKey: map['lrs_key'] ?? '',
-    lrsSecret: map['lrs_secret'] ?? '',
-    xApiDataDensity: (map['xapi_data_density'] ?? 0).toInt(),
-    supportEmail: map['support_email'] ?? '',
-    supportPhone: map['support_phone'] ?? '',
-    documentationUrl: map['documentation_url'] ?? '',
-    versionTag: map['version_tag'] ?? '',
-    changeLog: map['change_log'] ?? '',
-    ecosystemNotes: map['ecosystem_notes'] ?? '',
-  );
+        targetLms: map['target_lms'] ?? 'Genérico',
+        compatibilityPatches: (map['compatibility_patches'] as List? ?? [])
+            .map((item) => item.toString())
+            .toList(),
+        passwordProtectionEnabled: map['password_protection_enabled'] ?? false,
+        password: map['password'] ?? '',
+        domainRestrictionEnabled: map['domain_restriction_enabled'] ?? false,
+        allowedDomain: map['allowed_domain'] ?? '',
+        expirationDate: map['expiration_date'] ?? '',
+        offlineModeEnabled: map['offline_mode_enabled'] ?? false,
+        wcagLevel: map['wcag_level'] ?? 'Sin requisitos',
+        gdprCompliance: map['gdpr_compliance'] ?? false,
+        anonymizeLearnerData: map['anonymize_learner_data'] ?? false,
+        xApiEnabled: map['xapi_enabled'] ?? false,
+        lrsUrl: map['lrs_url'] ?? '',
+        lrsKey: map['lrs_key'] ?? '',
+        lrsSecret: map['lrs_secret'] ?? '',
+        xApiDataDensity: (map['xapi_data_density'] ?? 0).toInt(),
+        supportEmail: map['support_email'] ?? '',
+        supportPhone: map['support_phone'] ?? '',
+        documentationUrl: map['documentation_url'] ?? '',
+        versionTag: map['version_tag'] ?? '',
+        changeLog: map['change_log'] ?? '',
+        ecosystemNotes: map['ecosystem_notes'] ?? '',
+      );
 }
 
 class GlossaryItem {
@@ -306,14 +316,14 @@ class GlossaryItem {
   GlossaryItem({required this.term, required this.definition});
 
   Map<String, dynamic> toMap() => {
-    'term': term,
-    'definition': definition,
-  };
+        'term': term,
+        'definition': definition,
+      };
 
   factory GlossaryItem.fromMap(Map<String, dynamic> map) => GlossaryItem(
-    term: map['term'] ?? '',
-    definition: map['definition'] ?? '',
-  );
+        term: map['term'] ?? '',
+        definition: map['definition'] ?? '',
+      );
 }
 
 class FaqItem {
@@ -323,14 +333,14 @@ class FaqItem {
   FaqItem({required this.question, required this.answer});
 
   Map<String, dynamic> toMap() => {
-    'question': question,
-    'answer': answer,
-  };
+        'question': question,
+        'answer': answer,
+      };
 
   factory FaqItem.fromMap(Map<String, dynamic> map) => FaqItem(
-    question: map['question'] ?? '',
-    answer: map['answer'] ?? '',
-  );
+        question: map['question'] ?? '',
+        answer: map['answer'] ?? '',
+      );
 }
 
 class GeneralSection {
@@ -340,106 +350,151 @@ class GeneralSection {
   final List<InteractiveBlock> blocks;
 
   GeneralSection({
-    this.videoTutorialUrl = '', 
-    this.platformManualUrl = '', 
+    this.videoTutorialUrl = '',
+    this.platformManualUrl = '',
     this.studentGuideUrl = '',
     List<InteractiveBlock>? blocks,
-  }) : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  }) : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
   Map<String, dynamic> toMap() => {
-    'video_tutorial': videoTutorialUrl, 
-    'platform_manual': platformManualUrl, 
-    'student_guide': studentGuideUrl,
-    'blocks': blocks.map((x) => x.toMap()).toList(),
-  };
+        'video_tutorial': videoTutorialUrl,
+        'platform_manual': platformManualUrl,
+        'student_guide': studentGuideUrl,
+        'blocks': blocks.map((x) => x.toMap()).toList(),
+      };
 
   factory GeneralSection.fromMap(Map<String, dynamic> map) => GeneralSection(
-    videoTutorialUrl: map['video_tutorial'] ?? '',
-    platformManualUrl: map['platform_manual'] ?? '',
-    studentGuideUrl: map['student_guide'] ?? '',
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+        videoTutorialUrl: map['video_tutorial'] ?? '',
+        platformManualUrl: map['platform_manual'] ?? '',
+        studentGuideUrl: map['student_guide'] ?? '',
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }
 
 class IntroSection {
-  final List<InteractiveBlock> introBlocks;     // 1.2
+  final List<InteractiveBlock> introBlocks; // 1.2
   final List<InteractiveBlock> objectiveBlocks; // 1.3
   String presentationVideoUrl;
-  String conceptMapUrl; 
+  String conceptMapUrl;
 
-  IntroSection({
-    List<InteractiveBlock>? introBlocks,
-    List<InteractiveBlock>? objectiveBlocks,
-    this.presentationVideoUrl = '', 
-    this.conceptMapUrl = ''
-  }) : 
-    introBlocks = introBlocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})],
-    objectiveBlocks = objectiveBlocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  IntroSection(
+      {List<InteractiveBlock>? introBlocks,
+      List<InteractiveBlock>? objectiveBlocks,
+      this.presentationVideoUrl = '',
+      this.conceptMapUrl = ''})
+      : introBlocks = introBlocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ],
+        objectiveBlocks = objectiveBlocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
   Map<String, dynamic> toMap() => {
-    'intro_blocks': introBlocks.map((x) => x.toMap()).toList(),
-    'objective_blocks': objectiveBlocks.map((x) => x.toMap()).toList(),
-    'presentation_video': presentationVideoUrl,
-    'concept_map': conceptMapUrl,
-  };
+        'intro_blocks': introBlocks.map((x) => x.toMap()).toList(),
+        'objective_blocks': objectiveBlocks.map((x) => x.toMap()).toList(),
+        'presentation_video': presentationVideoUrl,
+        'concept_map': conceptMapUrl,
+      };
 
   factory IntroSection.fromMap(Map<String, dynamic> map) => IntroSection(
-    introBlocks: (map['intro_blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-    objectiveBlocks: (map['objective_blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-    presentationVideoUrl: map['presentation_video'] ?? '',
-    conceptMapUrl: map['concept_map'] ?? '',
-  );
+        introBlocks: (map['intro_blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+        objectiveBlocks: (map['objective_blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+        presentationVideoUrl: map['presentation_video'] ?? '',
+        conceptMapUrl: map['concept_map'] ?? '',
+      );
 }
 
 // 1.4 Mapa Conceptual (Nueva Clase para operatividad total)
 class MapSection {
   final List<InteractiveBlock> blocks;
-  MapSection({List<InteractiveBlock>? blocks}) 
-    : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
-  Map<String, dynamic> toMap() => {'blocks': blocks.map((x) => x.toMap()).toList()};
+  MapSection({List<InteractiveBlock>? blocks})
+      : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
+  Map<String, dynamic> toMap() =>
+      {'blocks': blocks.map((x) => x.toMap()).toList()};
   factory MapSection.fromMap(Map<String, dynamic> map) => MapSection(
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }
 
 class ResourcesSection {
   String bibliography;
   final List<InteractiveBlock> blocks;
 
-  ResourcesSection({this.bibliography = '', List<InteractiveBlock>? blocks}) 
-    : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  ResourcesSection({this.bibliography = '', List<InteractiveBlock>? blocks})
+      : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
   Map<String, dynamic> toMap() => {
-    'bibliography': bibliography,
-    'blocks': blocks.map((x) => x.toMap()).toList(),
-  };
+        'bibliography': bibliography,
+        'blocks': blocks.map((x) => x.toMap()).toList(),
+      };
 
-  factory ResourcesSection.fromMap(Map<String, dynamic> map) => ResourcesSection(
-    bibliography: map['bibliography'] ?? '',
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+  factory ResourcesSection.fromMap(Map<String, dynamic> map) =>
+      ResourcesSection(
+        bibliography: map['bibliography'] ?? '',
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }
 
 class GlossarySection {
   final List<InteractiveBlock> blocks;
-  GlossarySection({List<InteractiveBlock>? blocks}) 
-    : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  GlossarySection({List<InteractiveBlock>? blocks})
+      : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
-  Map<String, dynamic> toMap() => {'blocks': blocks.map((x) => x.toMap()).toList()};
+  Map<String, dynamic> toMap() =>
+      {'blocks': blocks.map((x) => x.toMap()).toList()};
   factory GlossarySection.fromMap(Map<String, dynamic> map) => GlossarySection(
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }
 
 class FaqSection {
   final List<InteractiveBlock> blocks;
-  FaqSection({List<InteractiveBlock>? blocks}) 
-    : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  FaqSection({List<InteractiveBlock>? blocks})
+      : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
-  Map<String, dynamic> toMap() => {'blocks': blocks.map((x) => x.toMap()).toList()};
+  Map<String, dynamic> toMap() =>
+      {'blocks': blocks.map((x) => x.toMap()).toList()};
   factory FaqSection.fromMap(Map<String, dynamic> map) => FaqSection(
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }
 
 class EvaluationSection {
@@ -447,20 +502,30 @@ class EvaluationSection {
   String participationCriteria;
   final List<InteractiveBlock> blocks;
 
-  EvaluationSection({this.finalExamId = '', this.participationCriteria = '', List<InteractiveBlock>? blocks}) 
-    : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  EvaluationSection(
+      {this.finalExamId = '',
+      this.participationCriteria = '',
+      List<InteractiveBlock>? blocks})
+      : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
   Map<String, dynamic> toMap() => {
-    'final_exam_id': finalExamId,
-    'participation_criteria': participationCriteria,
-    'blocks': blocks.map((x) => x.toMap()).toList(),
-  };
+        'final_exam_id': finalExamId,
+        'participation_criteria': participationCriteria,
+        'blocks': blocks.map((x) => x.toMap()).toList(),
+      };
 
-  factory EvaluationSection.fromMap(Map<String, dynamic> map) => EvaluationSection(
-    finalExamId: map['final_exam_id'] ?? '',
-    participationCriteria: map['participation_criteria'] ?? '',
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+  factory EvaluationSection.fromMap(Map<String, dynamic> map) =>
+      EvaluationSection(
+        finalExamId: map['final_exam_id'] ?? '',
+        participationCriteria: map['participation_criteria'] ?? '',
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }
 
 class StatsSection {
@@ -474,22 +539,27 @@ class StatsSection {
     this.averageScore = 0.0,
     this.averageTimeMinutes = 0,
     List<InteractiveBlock>? blocks,
-  }) 
-    : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  }) : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
   Map<String, dynamic> toMap() => {
-    'status': completionStatus,
-    'avg_score': averageScore,
-    'avg_time_minutes': averageTimeMinutes,
-    'blocks': blocks.map((x) => x.toMap()).toList(),
-  };
+        'status': completionStatus,
+        'avg_score': averageScore,
+        'avg_time_minutes': averageTimeMinutes,
+        'blocks': blocks.map((x) => x.toMap()).toList(),
+      };
 
   factory StatsSection.fromMap(Map<String, dynamic> map) => StatsSection(
-    completionStatus: map['status'] ?? 'N/A',
-    averageScore: (map['avg_score'] ?? 0.0).toDouble(),
-    averageTimeMinutes: (map['avg_time_minutes'] ?? 0).toInt(),
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+        completionStatus: map['status'] ?? 'N/A',
+        averageScore: (map['avg_score'] ?? 0.0).toDouble(),
+        averageTimeMinutes: (map['avg_time_minutes'] ?? 0).toInt(),
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }
 
 class ContentBankSection {
@@ -497,18 +567,29 @@ class ContentBankSection {
   String externalUrl;
   final List<InteractiveBlock> blocks;
 
-  ContentBankSection({this.files = const [], this.externalUrl = '', List<InteractiveBlock>? blocks}) 
-    : blocks = blocks ?? [InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ''})];
+  ContentBankSection(
+      {this.files = const [],
+      this.externalUrl = '',
+      List<InteractiveBlock>? blocks})
+      : blocks = blocks ??
+            [
+              InteractiveBlock.create(
+                  type: BlockType.textPlain, content: {'text': ''})
+            ];
 
   Map<String, dynamic> toMap() => {
-    'files': files,
-    'external_url': externalUrl,
-    'blocks': blocks.map((x) => x.toMap()).toList(),
-  };
+        'files': files,
+        'external_url': externalUrl,
+        'blocks': blocks.map((x) => x.toMap()).toList(),
+      };
 
-  factory ContentBankSection.fromMap(Map<String, dynamic> map) => ContentBankSection(
-    files: List<Map<String, String>>.from((map['files'] as List? ?? []).map((item) => Map<String, String>.from(item))),
-    externalUrl: map['external_url'] ?? '',
-    blocks: (map['blocks'] as List?)?.map((x) => InteractiveBlock.fromMap(x)).toList(),
-  );
+  factory ContentBankSection.fromMap(Map<String, dynamic> map) =>
+      ContentBankSection(
+        files: List<Map<String, String>>.from((map['files'] as List? ?? [])
+            .map((item) => Map<String, String>.from(item))),
+        externalUrl: map['external_url'] ?? '',
+        blocks: (map['blocks'] as List?)
+            ?.map((x) => InteractiveBlock.fromMap(x))
+            .toList(),
+      );
 }

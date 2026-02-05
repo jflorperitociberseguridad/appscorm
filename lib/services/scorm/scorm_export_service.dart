@@ -10,7 +10,8 @@ import 'package:universal_html/html.dart' as html;
 import '../../models/course_model.dart';
 import '../../models/interactive_block.dart';
 import 'scorm_export_assets.dart';
-import 'scorm_block_mappers.dart';
+import 'scorm_manifest_generator.dart';
+import 'html_generator.dart';
 
 class ScormExportService {
   // Instanciamos los generadores auxiliares
@@ -26,18 +27,23 @@ class ScormExportService {
     final archive = Archive();
 
     final assetMap = buildScormAssetMap(course);
+    final visibleModules =
+        course.modules.where((module) => module.isSource != true).toList();
+    final courseForExport = course.copyWith(modules: visibleModules);
     final manifestString = _manifestGen.generateManifest(
-      course,
+      courseForExport,
       enabledStaticSections: enabledStaticSections,
       assetFiles: assetMap.values.toList(),
     );
     final manifestBytes = utf8.encode(manifestString);
-    archive.addFile(ArchiveFile('imsmanifest.xml', manifestBytes.length, manifestBytes));
-    for (int i = 0; i < course.modules.length; i++) {
+    archive.addFile(
+        ArchiveFile('imsmanifest.xml', manifestBytes.length, manifestBytes));
+    for (int i = 0; i < courseForExport.modules.length; i++) {
       try {
         await Future<void>.sync(() {
           final fileName = 'module_$i.html';
-          final htmlContent = _htmlGen.generateModulePage(course, i, assetMap: assetMap);
+          final htmlContent = _htmlGen.generateModulePage(courseForExport, i,
+              assetMap: assetMap);
           final htmlBytes = utf8.encode(htmlContent);
           archive.addFile(ArchiveFile(fileName, htmlBytes.length, htmlBytes));
         });
@@ -47,17 +53,20 @@ class ScormExportService {
     }
 
     final indexContent = StringBuffer();
-    if (course.modules.isEmpty) {
+    if (courseForExport.modules.isEmpty) {
       indexContent.writeln('<p>No hay módulos disponibles en este curso.</p>');
     } else {
       indexContent.writeln('<ul>');
-      for (int i = 0; i < course.modules.length; i++) {
-        final title = HtmlGenerator.esc.convert(course.modules[i].title);
-        indexContent.writeln('<li><a href="module_$i.html">Módulo ${i + 1}: $title</a></li>');
+      for (int i = 0; i < courseForExport.modules.length; i++) {
+        final title =
+            HtmlGenerator.esc.convert(courseForExport.modules[i].title);
+        indexContent.writeln(
+            '<li><a href="module_$i.html">Módulo ${i + 1}: $title</a></li>');
       }
       indexContent.writeln('</ul>');
     }
-    final indexHtml = _htmlGen.generateStaticPage(course, 'Inicio del Curso', indexContent.toString());
+    final indexHtml = _htmlGen.generateStaticPage(
+        course, 'Inicio del Curso', indexContent.toString());
     final indexBytes = utf8.encode(indexHtml);
     archive.addFile(ArchiveFile('index.html', indexBytes.length, indexBytes));
     final staticPages = _collectStaticPages(
@@ -84,7 +93,7 @@ class ScormExportService {
     final encoder = ZipEncoder();
     final zipData = encoder.encode(archive)!;
     final zipBytes = Uint8List.fromList(zipData);
-    
+
     // Nombre del archivo de salida
     final outName = filename != null && filename.isNotEmpty
         ? filename
@@ -138,22 +147,28 @@ class ScormExportService {
       return _htmlGen.renderBlocks(blocks, assetMap: assetMap);
     }
 
-    List<InteractiveBlock> ensureBlocksFromText(List<InteractiveBlock> blocks, String text) {
+    List<InteractiveBlock> ensureBlocksFromText(
+        List<InteractiveBlock> blocks, String text) {
       if (text.trim().isEmpty) return blocks;
       if (hasMeaningfulBlocks(blocks)) return blocks;
       return [
-        InteractiveBlock.create(type: BlockType.textPlain, content: {'text': text})
+        InteractiveBlock.create(
+            type: BlockType.textPlain, content: {'text': text})
       ];
     }
 
     String listToHtml(List<String> items, String emptyText) {
-      final cleanItems = items.map((item) => item.trim()).where((item) => item.isNotEmpty).toList();
+      final cleanItems = items
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
       if (cleanItems.isEmpty) return emptyText;
-      final buf = StringBuffer('<ul>');
+      final buf = StringBuffer('<div class="objective-grid">');
       for (final item in cleanItems) {
-        buf.writeln('<li>${HtmlGenerator.esc.convert(item)}</li>');
+        buf.writeln(
+            '<article class="objective-card"><span>${HtmlGenerator.esc.convert(item)}</span></article>');
       }
-      buf.writeln('</ul>');
+      buf.writeln('</div>');
       return buf.toString();
     }
 
@@ -185,7 +200,8 @@ class ScormExportService {
       for (final item in cleanItems) {
         final question = HtmlGenerator.esc.convert(item.question);
         final answer = HtmlGenerator.esc.convert(item.answer);
-        buf.writeln('<div class="faq-item"><h3>$question</h3><p>$answer</p></div>');
+        buf.writeln(
+            '<div class="faq-item"><h3>$question</h3><p>$answer</p></div>');
       }
       buf.writeln('</div>');
       return buf.toString();
@@ -196,7 +212,8 @@ class ScormExportService {
       final parts = <String>[];
       final criteria = evaluation.participationCriteria.trim();
       if (criteria.isNotEmpty) {
-        parts.add('<div class="block text-block"><strong>Criterios:</strong> ${HtmlGenerator.esc.convert(criteria)}</div>');
+        parts.add(
+            '<div class="block text-block"><strong>Criterios:</strong> ${HtmlGenerator.esc.convert(criteria)}</div>');
       }
       if (blocks.isNotEmpty) {
         parts.add(_htmlGen.renderBlocks(blocks, assetMap: assetMap));
@@ -206,28 +223,31 @@ class ScormExportService {
     }
 
     bool isEnabled(String sectionId) {
-      return enabledStaticSections == null || enabledStaticSections.contains(sectionId);
+      return enabledStaticSections == null ||
+          enabledStaticSections.contains(sectionId);
     }
 
     // Mapeo: Nombre de archivo -> { Título, Contenido HTML }
     final pages = <String, Map<String, String>>{};
     if (isEnabled('general')) {
       pages['general.html'] = {
-        'title': '1.1 Información General', 
+        'title': '1.1 Información General',
         'content': blocksToHtml(course.general.blocks, '')
       };
     }
-    final introBlocks = ensureBlocksFromText(course.intro.introBlocks, course.introText);
-    final resourcesBlocks = ensureBlocksFromText(course.resources.blocks, course.resources.bibliography);
+    final introBlocks =
+        ensureBlocksFromText(course.intro.introBlocks, course.introText);
+    final resourcesBlocks = ensureBlocksFromText(
+        course.resources.blocks, course.resources.bibliography);
     if (isEnabled('intro')) {
       pages['intro.html'] = {
-        'title': '1.2 Introducción', 
+        'title': '1.2 Introducción',
         'content': blocksToHtml(introBlocks, '')
       };
     }
     if (isEnabled('objectives')) {
       pages['objetivos.html'] = {
-        'title': '1.3 Objetivos', 
+        'title': '1.3 Objetivos',
         'content': course.objectives.isNotEmpty
             ? listToHtml(course.objectives, '')
             : blocksToHtml(course.intro.objectiveBlocks, '')
@@ -235,19 +255,19 @@ class ScormExportService {
     }
     if (isEnabled('map')) {
       pages['mapa.html'] = {
-        'title': '1.4 Mapa Conceptual', 
+        'title': '1.4 Mapa Conceptual',
         'content': blocksToHtml(course.conceptMap.blocks, '')
       };
     }
     if (isEnabled('resources')) {
       pages['recursos.html'] = {
-        'title': '3.1 Recursos Didácticos', 
+        'title': '3.1 Recursos Didácticos',
         'content': blocksToHtml(resourcesBlocks, '')
       };
     }
     if (isEnabled('glossary')) {
       pages['glosario.html'] = {
-        'title': '3.2 Glosario', 
+        'title': '3.2 Glosario',
         'content': course.glossaryItems.isNotEmpty
             ? glossaryToHtml(course.glossaryItems, '')
             : blocksToHtml(course.glossary.blocks, '')
@@ -255,7 +275,7 @@ class ScormExportService {
     }
     if (isEnabled('faq')) {
       pages['faq.html'] = {
-        'title': '3.3 Preguntas Frecuentes', 
+        'title': '3.3 Preguntas Frecuentes',
         'content': course.faqItems.isNotEmpty
             ? faqsToHtml(course.faqItems, '')
             : blocksToHtml(course.faq.blocks, '')
@@ -263,23 +283,22 @@ class ScormExportService {
     }
     if (isEnabled('eval')) {
       pages['evaluacion.html'] = {
-        'title': '3.4 Evaluación Final', 
+        'title': '3.4 Evaluación Final',
         'content': evaluationToHtml(course.evaluation, '')
       };
     }
     if (isEnabled('stats')) {
       pages['estadisticas.html'] = {
-        'title': '3.5 Estadísticas', 
+        'title': '3.5 Estadísticas',
         'content': blocksToHtml(course.stats.blocks, '')
       };
     }
     if (isEnabled('bank')) {
       pages['banco.html'] = {
-        'title': '3.6 Banco de Contenidos', 
+        'title': '3.6 Banco de Contenidos',
         'content': blocksToHtml(course.contentBank.blocks, '')
       };
     }
     return pages;
   }
-
 }

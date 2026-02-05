@@ -43,8 +43,14 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
   void updateTitle(String newTitle) {
     if (state == null) return;
     state = CourseModel(
-        id: state!.id, title: newTitle, description: state!.description, modules: state!.modules,
-        userId: state!.userId, createdAt: state!.createdAt);
+      id: state!.id,
+      title: newTitle,
+      description: state!.description,
+      modules: state!.modules,
+      userId: state!.userId,
+      createdAt: state!.createdAt,
+      referenceModule: state!.referenceModule,
+    );
   }
 
   // --- PODERES DE CREACIÓN (NUEVO) ---
@@ -58,29 +64,47 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
       order: state!.modules.length,
       blocks: [], // Empieza vacío
     );
-    
+
     final updatedModules = [...state!.modules, newModule];
-    
+
     state = CourseModel(
-        id: state!.id, title: state!.title, description: state!.description, modules: updatedModules,
-        userId: state!.userId, createdAt: state!.createdAt);
+      id: state!.id,
+      title: state!.title,
+      description: state!.description,
+      modules: updatedModules,
+      userId: state!.userId,
+      createdAt: state!.createdAt,
+      referenceModule: state!.referenceModule,
+    );
   }
 
   // 2. AÑADIR BLOQUE (DE LOS 20 TIPOS)
   void addBlock(int moduleIndex, BlockType type) {
     if (state == null) return;
-    
+
     // Contenido por defecto
     Map<String, dynamic> defaultContent = {};
-    if (type.name.contains('text') || type == BlockType.accordion || type == BlockType.column) {
+    if (type.name.contains('text') ||
+        type == BlockType.accordion ||
+        type == BlockType.column) {
       defaultContent = {'text': 'Escribe aquí tu contenido...'};
-    } else if (type.name.contains('image') || type == BlockType.agamotto || type == BlockType.carousel) {
-      defaultContent = {'url': 'https://placehold.co/600x400', 'caption': 'Descripción de la imagen'};
+    } else if (type.name.contains('image') ||
+        type == BlockType.agamotto ||
+        type == BlockType.carousel) {
+      defaultContent = {
+        'url': 'https://placehold.co/600x400',
+        'caption': 'Descripción de la imagen'
+      };
     } else {
-      defaultContent = {'question': 'Nueva Pregunta o Actividad', 'options': ['Opción 1', 'Opción 2'], 'correctIndex': 0};
+      defaultContent = {
+        'question': 'Nueva Pregunta o Actividad',
+        'options': ['Opción 1', 'Opción 2'],
+        'correctIndex': 0
+      };
     }
 
-    final newBlock = InteractiveBlock.create(type: type, content: defaultContent);
+    final newBlock =
+        InteractiveBlock.create(type: type, content: defaultContent);
     addDirectBlock(moduleIndex, newBlock);
   }
 
@@ -92,12 +116,20 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
     final updatedBlocks = [...targetModule.blocks, block];
 
     updatedModules[moduleIndex] = ModuleModel(
-      id: targetModule.id, title: targetModule.title, order: targetModule.order, blocks: updatedBlocks
-    );
+        id: targetModule.id,
+        title: targetModule.title,
+        order: targetModule.order,
+        blocks: updatedBlocks);
 
     state = CourseModel(
-        id: state!.id, title: state!.title, description: state!.description, modules: updatedModules,
-        userId: state!.userId, createdAt: state!.createdAt);
+      id: state!.id,
+      title: state!.title,
+      description: state!.description,
+      modules: updatedModules,
+      userId: state!.userId,
+      createdAt: state!.createdAt,
+      referenceModule: state!.referenceModule,
+    );
   }
 
   // --- PODERES DE EDICIÓN Y BORRADO (YA EXISTENTES) ---
@@ -109,11 +141,19 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
     final updatedBlocks = List<InteractiveBlock>.from(targetModule.blocks);
     updatedBlocks[blockIndex] = newBlock;
     updatedModules[moduleIndex] = ModuleModel(
-      id: targetModule.id, title: targetModule.title, order: targetModule.order, blocks: updatedBlocks
-    );
+        id: targetModule.id,
+        title: targetModule.title,
+        order: targetModule.order,
+        blocks: updatedBlocks);
     state = CourseModel(
-        id: state!.id, title: state!.title, description: state!.description, modules: updatedModules,
-        userId: state!.userId, createdAt: state!.createdAt);
+      id: state!.id,
+      title: state!.title,
+      description: state!.description,
+      modules: updatedModules,
+      userId: state!.userId,
+      createdAt: state!.createdAt,
+      referenceModule: state!.referenceModule,
+    );
   }
 
   void removeBlock(int moduleIndex, int blockIndex) {
@@ -123,11 +163,19 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
     final updatedBlocks = List<InteractiveBlock>.from(targetModule.blocks);
     updatedBlocks.removeAt(blockIndex);
     updatedModules[moduleIndex] = ModuleModel(
-      id: targetModule.id, title: targetModule.title, order: targetModule.order, blocks: updatedBlocks
-    );
+        id: targetModule.id,
+        title: targetModule.title,
+        order: targetModule.order,
+        blocks: updatedBlocks);
     state = CourseModel(
-        id: state!.id, title: state!.title, description: state!.description, modules: updatedModules,
-        userId: state!.userId, createdAt: state!.createdAt);
+      id: state!.id,
+      title: state!.title,
+      description: state!.description,
+      modules: updatedModules,
+      userId: state!.userId,
+      createdAt: state!.createdAt,
+      referenceModule: state!.referenceModule,
+    );
   }
 
   void updateBlockProgress(
@@ -172,7 +220,8 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
   void updateModuleTitle(String moduleId, String newTitle) {
     if (state == null) return;
     final map = state!.toMap();
-    final modules = List<Map<String, dynamic>>.from(map['modules'] as List? ?? []);
+    final modules =
+        List<Map<String, dynamic>>.from(map['modules'] as List? ?? []);
     var updated = false;
     for (final module in modules) {
       if (module['id'] == moduleId) {
@@ -189,6 +238,7 @@ class CourseNotifier extends StateNotifier<CourseModel?> {
   }
 }
 
-final courseProvider = StateNotifierProvider<CourseNotifier, CourseModel?>((ref) {
+final courseProvider =
+    StateNotifierProvider<CourseNotifier, CourseModel?>((ref) {
   return CourseNotifier();
 });

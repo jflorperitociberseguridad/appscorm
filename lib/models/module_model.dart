@@ -24,6 +24,7 @@ class ModuleModel {
   String content;  // HTML del contenido (para el WYSIWYG simple)
   ModuleType type; // Tipo de contenido (Contexto para la IA)
   bool isCompleted;
+  bool isSource;
 
   ModuleModel({
     required this.id,
@@ -34,6 +35,7 @@ class ModuleModel {
     this.content = '',
     this.type = ModuleType.text,
     this.isCompleted = false,
+    this.isSource = false,
   });
 
   // ✅ PUENTE JSON
@@ -50,6 +52,7 @@ class ModuleModel {
       'content': content,
       'type': type.toString().split('.').last, // Guarda "text", "quiz", etc.
       'is_completed': isCompleted,
+      'is_source': isSource,
     };
   }
 
@@ -67,6 +70,7 @@ class ModuleModel {
       content: map['content'] ?? '',
       type: _stringToType(map['type'] ?? 'text'),
       isCompleted: map['is_completed'] ?? false,
+      isSource: map['is_source'] ?? false,
     );
   }
 

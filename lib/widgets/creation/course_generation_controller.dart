@@ -279,6 +279,7 @@ class CourseGenerationController {
           content: module.content,
         ));
       }
+      final referenceModule = _buildReferenceModule(manuscript);
 
       final container = ProviderScope.containerOf(context, listen: false);
       final existingCourse = container.read(courseProvider);
@@ -288,15 +289,21 @@ class CourseGenerationController {
         courseConfig: courseConfig,
         scormVersion: scormVersion,
         modules: moduleInstances,
+        referenceModule: referenceModule,
       );
-      course.contentBank.files = List<Map<String, String>>.from(contentBankFiles);
+      course.contentBank.files =
+          List<Map<String, String>>.from(contentBankFiles);
       _populateGuideSectionsFromModule(course);
-      container.read(courseProvider.notifier).updateCourse(course.copyWith(modules: moduleInstances));
+      container
+          .read(courseProvider.notifier)
+          .updateCourse(course.copyWith(modules: moduleInstances));
 
       if (!context.mounted) return;
       container.read(courseProvider.notifier).updateFullCourse(course);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🚀 Arquitectura instruccional desplegada con éxito')),
+        const SnackBar(
+            content:
+                Text('🚀 Arquitectura instruccional desplegada con éxito')),
       );
       _scrollEditorToTop(context);
       final payload = course.toJson();
@@ -304,7 +311,8 @@ class CourseGenerationController {
       context.push('/course-dashboard', extra: payload);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
       if (mounted) onLoadingChanged(false);
     }
@@ -330,19 +338,37 @@ class CourseGenerationController {
 
     String? detectBucket(String text) {
       final upper = text.toUpperCase();
-      if (upper.contains('INTRODUCCIÓN') || upper.contains('INTRODUCCION')) return 'intro';
-      if (upper.contains('OBJETIVOS')) return 'objectives';
-      if (upper.contains('MAPA CONCEPTUAL')) return 'map';
-      if (upper.contains('RECURSOS') || upper.contains('BIBLIOGRAF')) return 'resources';
-      if (upper.contains('GLOSARIO')) return 'glossary';
-      if (upper.contains('FAQ') || upper.contains('PREGUNTAS FRECUENTES')) return 'faq';
-      if (upper.contains('EVALUACIÓN') || upper.contains('EVALUACION') || upper.contains('EXAMEN')) return 'eval';
+      if (upper.contains('INTRODUCCIÓN') || upper.contains('INTRODUCCION')) {
+        return 'intro';
+      }
+      if (upper.contains('OBJETIVOS')) {
+        return 'objectives';
+      }
+      if (upper.contains('MAPA CONCEPTUAL')) {
+        return 'map';
+      }
+      if (upper.contains('RECURSOS') || upper.contains('BIBLIOGRAF')) {
+        return 'resources';
+      }
+      if (upper.contains('GLOSARIO')) {
+        return 'glossary';
+      }
+      if (upper.contains('FAQ') || upper.contains('PREGUNTAS FRECUENTES')) {
+        return 'faq';
+      }
+      if (upper.contains('EVALUACIÓN') ||
+          upper.contains('EVALUACION') ||
+          upper.contains('EXAMEN')) {
+        return 'eval';
+      }
       return null;
     }
 
     bool isModuleHeading(String text) {
       final upper = text.toUpperCase();
-      return upper.contains('MÓDULO') || upper.contains('MODULO') || upper.startsWith('TEMA ');
+      return upper.contains('MÓDULO') ||
+          upper.contains('MODULO') ||
+          upper.startsWith('TEMA ');
     }
 
     List<InteractiveBlock> targetBlocks(String bucket) {
@@ -381,7 +407,9 @@ class CourseGenerationController {
       final remaining = <InteractiveBlock>[];
       currentBucket = null;
       for (final block in module.blocks) {
-        if (block.type == BlockType.textPlain || block.type == BlockType.textRich || block.type == BlockType.essay) {
+        if (block.type == BlockType.textPlain ||
+            block.type == BlockType.textRich ||
+            block.type == BlockType.essay) {
           final text = (block.content['text'] ?? '').toString();
           if (isModuleHeading(text)) {
             currentBucket = null;
@@ -417,6 +445,7 @@ class CourseGenerationController {
     required CourseConfig courseConfig,
     required String scormVersion,
     required List<ModuleModel> modules,
+    ModuleModel? referenceModule,
   }) {
     final base = existingCourse;
     return CourseModel(
@@ -441,6 +470,7 @@ class CourseGenerationController {
       evaluation: base?.evaluation,
       stats: base?.stats,
       contentBank: base?.contentBank,
+      referenceModule: referenceModule ?? base?.referenceModule,
     );
   }
 
@@ -450,17 +480,21 @@ class CourseGenerationController {
     required String fallbackTitle,
   }) {
     final rawBlocks = _parseManuscriptBlocks(manuscript, config);
-    final regexModules = _splitBlocksIntoModulesByRegex(rawBlocks, fallbackTitle: fallbackTitle);
+    final regexModules =
+        _splitBlocksIntoModulesByRegex(rawBlocks, fallbackTitle: fallbackTitle);
     if (regexModules.length > 1) {
       return regexModules;
     }
 
-    final moduleDrafts = _splitManuscriptIntoModules(manuscript, fallbackTitle: fallbackTitle);
+    final moduleDrafts =
+        _splitManuscriptIntoModules(manuscript, fallbackTitle: fallbackTitle);
     final modules = <ModuleModel>[];
     for (var i = 0; i < moduleDrafts.length; i++) {
       final draft = moduleDrafts[i];
       final blocks = _parseManuscriptBlocks(draft.content, config);
-      final moduleTitle = draft.title.trim().isNotEmpty ? draft.title.trim() : 'Módulo ${i + 1}';
+      final moduleTitle = draft.title.trim().isNotEmpty
+          ? draft.title.trim()
+          : 'Módulo ${i + 1}';
       modules.add(ModuleModel(
         id: const Uuid().v4(),
         title: moduleTitle,
@@ -473,7 +507,29 @@ class CourseGenerationController {
     return modules;
   }
 
-  List<ModuleModel> _tryParseModulesFromJson(String manuscript, Map<String, dynamic> config) {
+  ModuleModel _buildReferenceModule(String manuscript) {
+    final sanitized = manuscript.trim();
+    final displayText =
+        sanitized.isEmpty ? 'Manuscrito sin contenido disponible.' : sanitized;
+
+    return ModuleModel(
+      id: const Uuid().v4(),
+      title: 'Material de Referencia',
+      order: 0,
+      blocks: [
+        InteractiveBlock.create(
+          type: BlockType.textPlain,
+          content: {'text': displayText},
+        ),
+      ],
+      content: sanitized,
+      type: ModuleType.text,
+      isSource: true,
+    );
+  }
+
+  List<ModuleModel> _tryParseModulesFromJson(
+      String manuscript, Map<String, dynamic> config) {
     try {
       final decoded = jsonDecode(manuscript);
       if (decoded is! Map<String, dynamic>) return <ModuleModel>[];
@@ -505,14 +561,17 @@ class CourseGenerationController {
             } else {
               content = {'text': rawContent?.toString() ?? ' '};
             }
-            if (!content.containsKey('text') || content['text'] == null || content['text'].toString().isEmpty) {
+            if (!content.containsKey('text') ||
+                content['text'] == null ||
+                content['text'].toString().isEmpty) {
               content['text'] = ' ';
             }
             blocks.add(InteractiveBlock.create(type: type, content: content));
           }
         }
         if (blocks.isEmpty) {
-          blocks.add(InteractiveBlock.create(type: BlockType.textPlain, content: {'text': ' '}));
+          blocks.add(InteractiveBlock.create(
+              type: BlockType.textPlain, content: {'text': ' '}));
         }
         modules.add(ModuleModel(
           id: const Uuid().v4(),
@@ -549,7 +608,10 @@ class CourseGenerationController {
     }
 
     String stripHtml(String input) {
-      return input.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\\s+'), ' ').trim();
+      return input
+          .replaceAll(RegExp(r'<[^>]*>'), ' ')
+          .replaceAll(RegExp(r'\\s+'), ' ')
+          .trim();
     }
 
     void flush() {
@@ -595,7 +657,8 @@ class CourseGenerationController {
         : modules;
   }
 
-  List<InteractiveBlock> _parseManuscriptBlocks(String manuscript, Map<String, dynamic> config) {
+  List<InteractiveBlock> _parseManuscriptBlocks(
+      String manuscript, Map<String, dynamic> config) {
     final blocks = <InteractiveBlock>[];
     final lines = manuscript.split('\n');
     final paragraphBuffer = <String>[];
@@ -648,7 +711,8 @@ class CourseGenerationController {
         flushList();
         final match = RegExp(r'^(#+)\\s*(.*)$').firstMatch(trimmed);
         final level = match?.group(1)?.length ?? 1;
-        final title = match?.group(2)?.trim() ?? trimmed.replaceFirst(RegExp(r'^#+'), '').trim();
+        final title = match?.group(2)?.trim() ??
+            trimmed.replaceFirst(RegExp(r'^#+'), '').trim();
         if (title.isNotEmpty) {
           blocks.add(_headerBlock(title, level, config));
           currentSectionTitle = title;
@@ -703,16 +767,22 @@ class CourseGenerationController {
   }
 
   bool _isListLine(String line) {
-    return line.startsWith('- ') || line.startsWith('* ') || line.startsWith('• ');
+    return line.startsWith('- ') ||
+        line.startsWith('* ') ||
+        line.startsWith('• ');
   }
 
   bool _containsImageMarker(String line) {
-    return line.contains('[IMAGEN]') || line.contains('[IMAGE]') || line.contains('![');
+    return line.contains('[IMAGEN]') ||
+        line.contains('[IMAGE]') ||
+        line.contains('![');
   }
 
   bool _isQuestionLine(String line) {
     final lower = line.toLowerCase();
-    return lower.startsWith('pregunta:') || line.contains('¿') || line.contains('?');
+    return lower.startsWith('pregunta:') ||
+        line.contains('¿') ||
+        line.contains('?');
   }
 
   bool _isChallengeLine(String line) {
@@ -720,18 +790,22 @@ class CourseGenerationController {
     return lower.contains('[reto]') || lower.startsWith('reto:');
   }
 
-  InteractiveBlock _headerBlock(String text, int level, Map<String, dynamic> config) {
+  InteractiveBlock _headerBlock(
+      String text, int level, Map<String, dynamic> config) {
     final safeLevel = level.clamp(1, 3);
     final html = '<h$safeLevel>${_escapeHtml(text)}</h$safeLevel>';
     return _textBlock(html, config, rich: true);
   }
 
-  InteractiveBlock _textBlock(String text, Map<String, dynamic> config, {bool rich = false}) {
+  InteractiveBlock _textBlock(String text, Map<String, dynamic> config,
+      {bool rich = false}) {
     final content = <String, dynamic>{
       'text': text.trim().isEmpty ? ' ' : text.trim(),
     };
     _applyBlockDefaults(content, config);
-    return InteractiveBlock.create(type: rich ? BlockType.textRich : BlockType.textPlain, content: content);
+    return InteractiveBlock.create(
+        type: rich ? BlockType.textRich : BlockType.textPlain,
+        content: content);
   }
 
   InteractiveBlock _listBlock(List<String> items, Map<String, dynamic> config) {
@@ -744,13 +818,15 @@ class CourseGenerationController {
     return _textBlock(buffer.toString(), config, rich: true);
   }
 
-  InteractiveBlock _processBlock(List<String> items, Map<String, dynamic> config) {
+  InteractiveBlock _processBlock(
+      List<String> items, Map<String, dynamic> config) {
     final steps = <Map<String, dynamic>>[];
     for (var i = 0; i < items.length; i++) {
       final item = items[i].trim();
       if (item.isEmpty) continue;
       final parts = item.split(':');
-      final title = parts.first.trim().isEmpty ? 'Paso ${i + 1}' : parts.first.trim();
+      final title =
+          parts.first.trim().isEmpty ? 'Paso ${i + 1}' : parts.first.trim();
       final desc = parts.length > 1 ? parts.sublist(1).join(':').trim() : '';
       steps.add({
         'title': title,
@@ -763,7 +839,8 @@ class CourseGenerationController {
     return InteractiveBlock.create(type: BlockType.process, content: content);
   }
 
-  InteractiveBlock _timelineBlock(List<String> items, Map<String, dynamic> config) {
+  InteractiveBlock _timelineBlock(
+      List<String> items, Map<String, dynamic> config) {
     final events = <Map<String, dynamic>>[];
     for (final item in items) {
       final raw = item.trim();
@@ -803,20 +880,24 @@ class CourseGenerationController {
   }
 
   InteractiveBlock _questionBlock(String text, Map<String, dynamic> config) {
-    final question = text.replaceAll('[RETO]', '').replaceAll('[reto]', '').trim();
+    final question =
+        text.replaceAll('[RETO]', '').replaceAll('[reto]', '').trim();
     final safeQuestion = question.isEmpty ? 'Pregunta pendiente' : question;
     final content = <String, dynamic>{
       'question': safeQuestion,
       'options': ['Opción A', 'Opción B', 'Opción C'],
       'correctIndex': 0,
       'feedbackPositive': 'Correcto. Has respondido bien: $safeQuestion',
-      'feedbackNegative': 'Respuesta incorrecta. Revisa el contenido y vuelve a intentar: $safeQuestion',
+      'feedbackNegative':
+          'Respuesta incorrecta. Revisa el contenido y vuelve a intentar: $safeQuestion',
     };
     _applyBlockDefaults(content, config);
-    return InteractiveBlock.create(type: BlockType.singleChoice, content: content);
+    return InteractiveBlock.create(
+        type: BlockType.singleChoice, content: content);
   }
 
-  InteractiveBlock _flashcardsBlock(String frontText, String backText, Map<String, dynamic> config) {
+  InteractiveBlock _flashcardsBlock(
+      String frontText, String backText, Map<String, dynamic> config) {
     final content = <String, dynamic>{
       'cards': [
         {
@@ -830,7 +911,8 @@ class CourseGenerationController {
       ],
     };
     _applyBlockDefaults(content, config);
-    return InteractiveBlock.create(type: BlockType.flashcards, content: content);
+    return InteractiveBlock.create(
+        type: BlockType.flashcards, content: content);
   }
 
   InteractiveBlock _videoBlock(String url, Map<String, dynamic> config) {
@@ -860,9 +942,12 @@ class CourseGenerationController {
                 ? 'calidad'
                 : 'el tema central';
 
-    blocks.add(_flashcardsBlock('Concepto clave de $topic', 'Definicion resumida de $topic.', config));
-    blocks.add(_questionBlock('Pregunta: ¿Que idea principal recuerdas sobre $topic?', config));
-    blocks.add(_videoBlock('https://www.youtube.com/embed/jNQXAC9IVRw', config));
+    blocks.add(_flashcardsBlock(
+        'Concepto clave de $topic', 'Definicion resumida de $topic.', config));
+    blocks.add(_questionBlock(
+        'Pregunta: ¿Que idea principal recuerdas sobre $topic?', config));
+    blocks
+        .add(_videoBlock('https://www.youtube.com/embed/jNQXAC9IVRw', config));
   }
 
   InteractiveBlock _challengeBlock(String text, Map<String, dynamic> config) {
@@ -895,7 +980,8 @@ class CourseGenerationController {
 
   InteractiveBlock _imageBlock(String text, Map<String, dynamic> config) {
     final style = (config['imageStyle'] ?? 'Fotorealista').toString();
-    final cleaned = text.replaceAll('[IMAGEN]', '').replaceAll('[IMAGE]', '').trim();
+    final cleaned =
+        text.replaceAll('[IMAGEN]', '').replaceAll('[IMAGE]', '').trim();
     final caption = cleaned.isEmpty ? 'Imagen sugerida' : cleaned;
     final content = <String, dynamic>{
       'url': 'https://placehold.co/1200x800',
@@ -906,7 +992,8 @@ class CourseGenerationController {
     return InteractiveBlock.create(type: BlockType.image, content: content);
   }
 
-  void _applyBlockDefaults(Map<String, dynamic> content, Map<String, dynamic> config) {
+  void _applyBlockDefaults(
+      Map<String, dynamic> content, Map<String, dynamic> config) {
     content['scormNavigationMode'] = config['scormNavigationMode'];
     content['scormCompletionStatus'] = config['scormCompletionStatus'];
     content['scormMasteryScore'] = config['scormMasteryScore'];
@@ -915,10 +1002,13 @@ class CourseGenerationController {
     content['interactionDensity'] = config['interactionDensity'];
   }
 
-  void _applyNavigationAndGamificationRules(List<InteractiveBlock> blocks, Map<String, dynamic> config) {
-    final navMode = (config['scormNavigationMode'] ?? '').toString().toLowerCase();
+  void _applyNavigationAndGamificationRules(
+      List<InteractiveBlock> blocks, Map<String, dynamic> config) {
+    final navMode =
+        (config['scormNavigationMode'] ?? '').toString().toLowerCase();
     final isLinear = navMode.contains('lineal');
-    final challengeFrequency = (config['challengeFrequency'] ?? '').toString().toLowerCase();
+    final challengeFrequency =
+        (config['challengeFrequency'] ?? '').toString().toLowerCase();
     final gamificationActive = challengeFrequency.contains('preguntas') ||
         challengeFrequency.contains('gamificacion') ||
         challengeFrequency.contains('gamificación');
@@ -967,7 +1057,8 @@ class CourseGenerationController {
     );
   }
 
-  List<_ModuleDraft> _splitManuscriptIntoModules(String manuscript, {required String fallbackTitle}) {
+  List<_ModuleDraft> _splitManuscriptIntoModules(String manuscript,
+      {required String fallbackTitle}) {
     final lines = manuscript.split('\n');
     final modules = <_ModuleDraft>[];
     String? currentTitle;
@@ -999,7 +1090,9 @@ class CourseGenerationController {
     }
 
     final nonEmpty = modules.where((m) => m.content.trim().isNotEmpty).toList();
-    return nonEmpty.isEmpty ? [_ModuleDraft(title: fallbackTitle, content: manuscript)] : nonEmpty;
+    return nonEmpty.isEmpty
+        ? [_ModuleDraft(title: fallbackTitle, content: manuscript)]
+        : nonEmpty;
   }
 }
 

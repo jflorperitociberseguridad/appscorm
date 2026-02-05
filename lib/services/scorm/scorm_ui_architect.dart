@@ -6,7 +6,8 @@ class ScormUiArchitect {
     required String bodyContent,
     required int progress,
   }) {
-    final styles = _premiumStyles.replaceAll('{{PROGRESS}}', progress.toString());
+    final styles =
+        _premiumStyles.replaceAll('{{PROGRESS}}', progress.toString());
     final scripts = ScormEngineScripts.buildScripts(progress);
     return '''
 <!DOCTYPE html>
@@ -304,6 +305,170 @@ body::before {
   transform: translateY(-5px);
   box-shadow: 0 18px 30px rgba(15, 23, 42, 0.12);
   border-color: rgba(59, 130, 246, 0.35);
+}
+
+.module-shell {
+  background: #fff;
+  border-radius: 28px;
+  margin: 20px auto;
+  padding-bottom: 32px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.module-hero {
+  padding: 40px 36px 32px;
+  background: var(--hero-gradient, linear-gradient(135deg,#2563EB,#9333EA));
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+.module-hero h1 {
+  margin: 20px 0 10px;
+  font-size: 32px;
+  font-weight: 700;
+}
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+.hero-meta {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.hero-time::before {
+  content: '⏰';
+  margin-right: 6px;
+}
+.module-body {
+  padding: 0 40px;
+  margin-top: -32px;
+}
+.hero-overlap {
+  margin-top: -40px;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+  padding: 28px;
+  position: relative;
+  z-index: 2;
+}
+.reference-footer {
+  margin-top: 8px;
+  text-align: center;
+}
+.reference-link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+.reference-link:hover {
+  text-decoration: underline;
+}
+.reference-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 99;
+}
+.reference-modal.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.reference-card {
+  background: #fff;
+  border-radius: 24px;
+  width: min(90vw, 720px);
+  padding: 30px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+.reference-card h3 {
+  margin-top: 0;
+}
+.reference-body {
+  margin-top: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 18px;
+}
+.reference-body pre {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  white-space: pre-wrap;
+  color: #0f172a;
+}
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  color: #475569;
+}
+.objective-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.objective-card {
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  border-radius: 18px;
+  padding: 22px;
+  min-height: 90px;
+  border: 1px solid #93c5fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 600;
+  color: #0f172a;
+  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.18);
+}
+.accordion-block details {
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  margin-bottom: 12px;
+  padding: 12px 18px;
+  background: #fff;
+}
+.accordion-block details summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.accordion-block details summary::after {
+  content: '▾';
+  transition: transform 0.3s ease;
+}
+.accordion-block details[open] summary::after {
+  transform: rotate(180deg);
 }
 
 .block {
