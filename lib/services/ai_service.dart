@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'config/secret_loader.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -14,17 +15,26 @@ class AiService {
   // ===========================================================================
   // 🔑 ZONA DE CLAVES API
   // ===========================================================================
-  static const String _geminiKey = String.fromEnvironment('GEMINI_API_KEY');
-  static const String _huggingFaceToken = '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'; 
+  static const String _huggingFaceToken = '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';
   // ===========================================================================
-
   final Uuid _uuid = const Uuid();
   final GenerativeModel? _textModel;
 
-  AiService()
-      : _textModel = _geminiKey.isNotEmpty
-            ? GenerativeModel(model: 'gemini-2.5-flash', apiKey: _geminiKey)
-            : null;
+  AiService._(this._textModel);
+
+  static Future<AiService> create() async {
+    final secrets = await SecretLoader.load();
+    final apiKey = secrets['gemini_api_key'] ?? '';
+    if (apiKey.isEmpty) {
+      debugPrint(
+        '⚠️ gemini_api_key ausente en secrets.json. Las llamadas a Gemini se desactivan hasta que se añada la clave.',
+      );
+    }
+    final model = apiKey.isNotEmpty
+        ? GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey)
+        : null;
+    return AiService._(model);
+  }
 
   Future<CourseModel> generateMockCourse() async {
     return _generateVisualFallback("Curso de Prueba (Mock)");
@@ -227,8 +237,8 @@ class AiService {
   // 🛠️ MÉTODOS PRIVADOS (BLINDAJE TOTAL CONTRA CRASHES)
   // ===========================================================================
   bool _hasGeminiKey() {
-    if (_geminiKey.isEmpty || _textModel == null) {
-      debugPrint("⚠️ GEMINI_API_KEY no configurada. Se omite llamada a Gemini.");
+    if (_textModel == null) {
+      debugPrint("⚠️ gemini_api_key no configurada. Se omite llamada a Gemini.");
       return false;
     }
     return true;

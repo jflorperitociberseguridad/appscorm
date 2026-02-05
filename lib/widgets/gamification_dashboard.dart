@@ -1007,11 +1007,18 @@ class _SupportScreenState extends State<SupportScreen> {
   final TextEditingController _issueController = TextEditingController();
   String? _aiResponse;
   bool _isConsulting = false;
+  late final Future<AiService> _aiServiceFuture;
 
   void _scheduleSetState(VoidCallback fn) {
     if (mounted) {
       Future.microtask(() => setState(fn));
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _aiServiceFuture = AiService.create();
   }
 
   @override
@@ -1027,7 +1034,7 @@ class _SupportScreenState extends State<SupportScreen> {
       _isConsulting = true;
       _aiResponse = null;
     });
-    final aiService = AiService();
+    final aiService = await _aiServiceFuture;
     const guide = 'Guia rapida AppScorm: revisar contenido, exportacion SCORM, y sincronizacion de modulos.';
     final response = await aiService.analyzeDocument('Consulta: $issue\n$guide');
     if (!mounted) return;

@@ -148,7 +148,7 @@ extension _DashboardEditorActions on _DashboardEditorState {
 
     _scheduleSetState(() => _isGeneratingSection = true);
     try {
-      final aiService = AiService();
+      final aiService = await AiService.create();
       final result = await aiService.generateSectionContent(
         sectionIndex: sectionIndex,
         sectionName: _getSelectedSectionName(selectedSection),

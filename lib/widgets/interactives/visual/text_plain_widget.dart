@@ -13,8 +13,14 @@ class TextPlainWidget extends StatefulWidget {
 }
 
 class _TextPlainWidgetState extends State<TextPlainWidget> {
-  final AiService _aiService = AiService();
+  late final Future<AiService> _aiServiceFuture;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _aiServiceFuture = AiService.create();
+  }
 
   // ESTA ES LA FUNCIÓN QUE HACE FUNCIONAR EL BOTÓN DE LA IA (PUNTO 2)
   Future<void> _ejecutarIA(String accion) async {
@@ -30,7 +36,8 @@ class _TextPlainWidgetState extends State<TextPlainWidget> {
       String textoActual = widget.block.content['text'] ?? '';
 
       // Llamamos a Gemini
-      final nuevoTexto = await _aiService.improveText(textoActual, mode: modo);
+      final aiService = await _aiServiceFuture;
+      final nuevoTexto = await aiService.improveText(textoActual, mode: modo);
 
       // Actualizamos el bloque con el nuevo texto
       setState(() {

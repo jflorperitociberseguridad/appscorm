@@ -30,13 +30,14 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
   final TextEditingController _nameController = TextEditingController(); 
   
   bool _isLoading = true;
-  final AiService _aiService = AiService(); 
+  late final Future<AiService> _aiServiceFuture;
 
   @override
   void initState() {
     super.initState();
     // Iniciamos el nombre con la etiqueta por defecto
     _nameController.text = widget.label.isNotEmpty ? widget.label : "Nuevo Contenido";
+    _aiServiceFuture = AiService.create();
     _initializeEditor();
     _isLoading = false;
   }
@@ -114,8 +115,9 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
       final currentText = _controller.document.toPlainText();
       // Usamos 'fix' si es professional, o el modo directo
       String aiMode = mode == 'professional' ? 'fix' : mode;
+      final aiService = await _aiServiceFuture;
       
-      final improved = await _aiService.improveText(currentText, mode: aiMode);
+      final improved = await aiService.improveText(currentText, mode: aiMode);
       if (!mounted) return;
       
       // Convertimos el texto mejorado a Delta para el editor
@@ -161,7 +163,8 @@ class _WysiwygEditorState extends State<WysiwygEditor> {
 
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("🎨 Pintando imagen...")));
     try {
-      final base64Image = await _aiService.generateImage(prompt);
+      final aiService = await _aiServiceFuture;
+      final base64Image = await aiService.generateImage(prompt);
       if (!mounted) return;
       if (base64Image != null && base64Image.isNotEmpty) {
         final formattedImage = base64Image.startsWith('data:image') 
