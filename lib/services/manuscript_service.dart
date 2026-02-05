@@ -1,25 +1,36 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/course_model.dart';
 import '../models/interactive_block.dart';
+import 'config/secret_loader.dart';
 
 class ManuscriptService {
-  static const String _geminiKey = String.fromEnvironment('GEMINI_API_KEY');
   static const String _geminiReferer = 'http://localhost:8080';
 
-  late final GenerativeModel? _textModel;
   late final http.Client _geminiHttpClient;
+  late final Future<GenerativeModel?> _textModelFuture;
 
   ManuscriptService() {
     _geminiHttpClient = _RefererHttpClient(http.Client(), _geminiReferer);
-    _textModel = _geminiKey.isNotEmpty
-        ? GenerativeModel(
-            model: 'gemini-2.5-flash',
-            apiKey: _geminiKey,
-            httpClient: _geminiHttpClient,
-          )
-        : null;
+    _textModelFuture = _loadTextModel();
+  }
+
+  Future<GenerativeModel?> _loadTextModel() async {
+    final secrets = await SecretLoader.load();
+    final apiKey = secrets['gemini_api_key'] ?? '';
+    if (apiKey.isEmpty) {
+      debugPrint(
+        '⚠️ gemini_api_key ausente en secrets.json. Las llamadas a Gemini se desactivan hasta que se añada la clave.',
+      );
+      return null;
+    }
+    return GenerativeModel(
+      model: 'gemini-2.5-flash',
+      apiKey: apiKey,
+      httpClient: _geminiHttpClient,
+    );
   }
 
   Future<ManuscriptResult> generate({
@@ -27,11 +38,12 @@ class ManuscriptService {
     required String contentBankText,
     required Map<String, dynamic> generationConfig,
   }) async {
-    if (!_hasGeminiKey()) {
+    final model = await _textModelFuture;
+    if (model == null) {
       return ManuscriptResult(
-        markdown: _fallbackManuscript('GEMINI_API_KEY no configurada.'),
+        markdown: _fallbackManuscript('gemini_api_key no configurada.'),
         success: false,
-        reason: 'GEMINI_API_KEY no configurada.',
+        reason: 'gemini_api_key no configurada.',
       );
     }
     try {
@@ -40,7 +52,7 @@ class ManuscriptService {
         contentBankText: contentBankText,
         generationConfig: generationConfig,
       );
-      final response = await _textModel!.generateContent([Content.text(prompt)]);
+      final response = await model.generateContent([Content.text(prompt)]);
       final text = response.text?.trim() ?? '';
       if (text.isEmpty) {
         return ManuscriptResult(
@@ -72,12 +84,7 @@ class ManuscriptService {
     return result.markdown;
   }
 
-  bool _hasGeminiKey() {
-    if (_geminiKey.isEmpty || _textModel == null) {
-      return false;
-    }
-    return true;
-  }
+  // Removed in favor of asynchronous model loading.
 
   String _buildPrompt({
     required CourseConfig courseConfig,
