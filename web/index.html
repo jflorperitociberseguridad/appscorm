@@ -35,6 +35,10 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Force CanvasKit renderer (requires building with `--web-renderer canvaskit`) -->
+  <script>
+    window.flutterWebRenderer = 'canvaskit';
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -143,29 +143,44 @@ class _CourseDashboardScreenState extends ConsumerState<CourseDashboardScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      body: Row(
+      body: Stack(
         children: [
-          DashboardSidebar(
-            course: course,
-            selectionController: _selectionController,
-            onCourseUpdated: _notifyCourseUpdated,
-            onAddModule: _addNewModule,
-          ),
-          Expanded(
-            child: DashboardEditor(
-              course: course,
-              selectionController: _selectionController,
-              onCourseUpdated: _notifyCourseUpdated,
-              onAddModule: _addNewModule,
-              onToggleRightPanel: _toggleRightPanel,
-              isRightPanelVisible: _isRightPanelVisible,
-              scrollController: _editorScrollController,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                flex: 2,
+                child: DashboardSidebar(
+                  course: course,
+                  selectionController: _selectionController,
+                  onCourseUpdated: _notifyCourseUpdated,
+                  onAddModule: _addNewModule,
+                ),
+              ),
+              Flexible(
+                flex: 8,
+                child: DashboardEditor(
+                  course: course,
+                  selectionController: _selectionController,
+                  onCourseUpdated: _notifyCourseUpdated,
+                  onAddModule: _addNewModule,
+                  onToggleRightPanel: _toggleRightPanel,
+                  isRightPanelVisible: _isRightPanelVisible,
+                  scrollController: _editorScrollController,
+                ),
+              ),
+            ],
           ),
           if (_isRightPanelVisible)
-            GamificationDashboard(
-              progress: _calculateProgress(),
-              onClose: _toggleRightPanel,
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 0,
+              width: 360,
+              child: GamificationDashboard(
+                progress: _calculateProgress(),
+                onClose: _toggleRightPanel,
+              ),
             ),
         ],
       ),

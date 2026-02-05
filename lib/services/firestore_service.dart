@@ -6,16 +6,19 @@ class FirestoreService {
 
   Future<void> createCourse(CourseModel course) async {
     try {
-      // 1. Create the Course document
+      final batch = _db.batch();
+
+      // 1. Prepare the Course document
       final courseRef = _db.collection('courses').doc(course.id);
-      await courseRef.set(course.toMap());
+      batch.set(courseRef, course.toMap());
 
-      // 2. Create the Subcollection for Modules
+      // 2. Queue all modules in a single batch
       final modulesRef = courseRef.collection('modules');
-
-      for (var module in course.modules) {
-        await modulesRef.doc(module.id).set(module.toMap());
+      for (final module in course.modules) {
+        batch.set(modulesRef.doc(module.id), module.toMap());
       }
+
+      await batch.commit();
     } catch (e) {
       rethrow;
     }

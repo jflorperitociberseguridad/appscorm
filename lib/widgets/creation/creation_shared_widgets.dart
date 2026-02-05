@@ -193,18 +193,19 @@ class InteractiveBlockEditor extends StatelessWidget {
             child: Text(emptyLabel, style: const TextStyle(color: Color(0xFF94A3B8))),
           ),
         for (int i = 0; i < blocks.length; i++)
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: InteractiveBlockRenderer(block: blocks[i])),
+            children: [
+              Expanded(child: InteractiveBlockRenderer(block: blocks[i])),
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   color: Colors.red.shade300,

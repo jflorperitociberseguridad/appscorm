@@ -6,26 +6,26 @@ const double _toolbarTopSpacing = 18;
 extension _DashboardEditorUi on _DashboardEditorState {
 
   Widget _buildTopBar() {
-  return Container(
-    color: Colors.white,
-    padding: const EdgeInsets.symmetric(horizontal: 10),
-    child: SafeArea(
-      bottom: false,
-      child: SizedBox(
-        height: 60,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 360;
-            final titleField = TextFormField(
-              controller: _titleController,
-              maxLines: 1,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis),
-              decoration: const InputDecoration(border: InputBorder.none, hintText: "Título del curso..."),
-              onChanged: (v) {
-                widget.course.title = v;
-                _notifyCourseUpdated();
-              },
-            );
+    return RepaintBoundary(
+      child: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 60,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 360;
+                final titleField = TextFormField(
+                  controller: _titleController,
+                  maxLines: 1,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis),
+                  decoration: const InputDecoration(border: InputBorder.none, hintText: "Título del curso..."),
+                  onChanged: (v) => _scheduleDebouncedCourseUpdate('course_title', () {
+                    widget.course.title = v;
+                  }),
+                );
             final actionsRow = Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -58,11 +58,30 @@ extension _DashboardEditorUi on _DashboardEditorState {
               ],
             );
 
-            if (isNarrow) {
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                if (isNarrow) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.dashboard_customize, color: Colors.indigo),
+                          onPressed: () => context.go('/'),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.bug_report, color: Colors.deepOrange),
+                          tooltip: 'Stress Test Golden Course',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _confirmGoldenMockLoad,
+                        ),
+                        SizedBox(width: 200, child: titleField),
+                        actionsRow,
+                      ],
+                    ),
+                  );
+                }
+
+                return Row(
                   children: [
                     IconButton(
                       icon: const Icon(Icons.dashboard_customize, color: Colors.indigo),
@@ -74,50 +93,33 @@ extension _DashboardEditorUi on _DashboardEditorState {
                       visualDensity: VisualDensity.compact,
                       onPressed: _confirmGoldenMockLoad,
                     ),
-                    SizedBox(width: 200, child: titleField),
-                    actionsRow,
+                    Expanded(child: titleField),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: actionsRow,
+                      ),
+                    ),
                   ],
-                ),
-              );
-            }
-
-            return Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.dashboard_customize, color: Colors.indigo),
-                  onPressed: () => context.go('/'),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.bug_report, color: Colors.deepOrange),
-                  tooltip: 'Stress Test Golden Course',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: _confirmGoldenMockLoad,
-                ),
-                Expanded(child: titleField),
-                Flexible(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: actionsRow,
-                  ),
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 Widget _buildMainContentArea(String selectedSection) {
   return Expanded(
-    child: Column(
-      children: [
-        Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+    child: RepaintBoundary(
+      child: Column(
+        children: [
+          Container(
+            height: 60,
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            decoration: const BoxDecoration(
+              color: Colors.white,
             border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
           ),
           child: Row(
@@ -161,34 +163,64 @@ Widget _buildMainContentArea(String selectedSection) {
               ),
             ],
           ),
-        ),
-        Expanded(
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned.fill(
-                child: Container(
-                  padding: const EdgeInsets.all(35),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: _toolbarReservedHeight + _toolbarTopSpacing),
-                    child: _buildSectionEditor(selectedSection),
-                  ),
-                ),
+          ),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.grey.shade100, Colors.grey.shade200],
+                  begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
-              Positioned(
-                top: _toolbarTopSpacing,
-                left: 35,
-                right: 35,
-                child: _BlockToolbar(
-                  sectionId: selectedSection,
-                  onBlockSelected: (type, initialContent) => _addBlockToSection(
-                    selectedSection,
-                    type,
-                    initialContent: initialContent,
+            ),
+            child: GridPaper(
+              color: Colors.transparent,
+              divisions: 4,
+              interval: 150,
+              subdivisions: 5,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 40,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 20),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: _toolbarReservedHeight + _toolbarTopSpacing),
+                          child: _buildSectionEditor(selectedSection),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    top: _toolbarTopSpacing + 8,
+                    left: 40,
+                    right: 40,
+                    child: _BlockToolbar(
+                      sectionId: selectedSection,
+                      onBlockSelected: (type, initialContent) => _addBlockToSection(
+                        selectedSection,
+                        type,
+                        initialContent: initialContent,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ],
@@ -207,7 +239,9 @@ Widget _buildInitialPanelConfigCard() {
             labelText: "Público",
             border: OutlineInputBorder(),
           ),
-          onChanged: (value) => _panelAudience = value,
+          onChanged: (value) => _scheduleDebouncedCourseUpdate('panel_audience', () {
+            _panelAudience = value;
+          }),
         ),
         const SizedBox(height: 12),
         TextFormField(
@@ -216,7 +250,9 @@ Widget _buildInitialPanelConfigCard() {
             labelText: "Tono",
             border: OutlineInputBorder(),
           ),
-          onChanged: (value) => _panelTone = value,
+          onChanged: (value) => _scheduleDebouncedCourseUpdate('panel_tone', () {
+            _panelTone = value;
+          }),
         ),
         const SizedBox(height: 12),
         TextFormField(
@@ -225,7 +261,9 @@ Widget _buildInitialPanelConfigCard() {
             labelText: "Metodología",
             border: OutlineInputBorder(),
           ),
-          onChanged: (value) => _panelMethodology = value,
+          onChanged: (value) => _scheduleDebouncedCourseUpdate('panel_methodology', () {
+            _panelMethodology = value;
+          }),
         ),
       ],
     ),

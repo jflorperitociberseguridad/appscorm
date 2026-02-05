@@ -80,9 +80,11 @@ class _ContentMultimediaBlockEditorState extends State<ContentMultimediaBlockEdi
     if (specs.isEmpty) {
       return const Center(child: Text('No hay campos configurables para este bloque.'));
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: specs.map((spec) {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: specs.map((spec) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: TextFormField(
@@ -97,6 +99,7 @@ class _ContentMultimediaBlockEditorState extends State<ContentMultimediaBlockEdi
           ),
         );
       }).toList(),
+      ),
     );
   }
 }

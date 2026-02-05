@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
@@ -14,23 +16,15 @@ class AiService {
   // ===========================================================================
   static const String _geminiKey = String.fromEnvironment('GEMINI_API_KEY');
   static const String _huggingFaceToken = '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'; 
-  static const String _geminiReferer = 'http://localhost:8080';
   // ===========================================================================
 
   final Uuid _uuid = const Uuid();
-  late final GenerativeModel? _textModel;
-  late final http.Client _geminiHttpClient;
+  final GenerativeModel? _textModel;
 
-  AiService() {
-    _geminiHttpClient = _RefererHttpClient(http.Client(), _geminiReferer);
-    _textModel = _geminiKey.isNotEmpty
-        ? GenerativeModel(
-            model: 'gemini-2.5-flash',
-            apiKey: _geminiKey,
-            httpClient: _geminiHttpClient,
-          )
-        : null;
-  }
+  AiService()
+      : _textModel = _geminiKey.isNotEmpty
+            ? GenerativeModel(model: 'gemini-2.5-flash', apiKey: _geminiKey)
+            : null;
 
   Future<CourseModel> generateMockCourse() async {
     return _generateVisualFallback("Curso de Prueba (Mock)");
@@ -40,23 +34,23 @@ class AiService {
   Future<CourseModel> generateCourseFromText(String text, {Map<String, dynamic>? config}) async {
     try {
       if (!_hasGeminiKey()) return _generateVisualFallback(text);
-      final prompt = AiPrompts.generateCourse(text, config: _withSystemTags(config));
+      debugPrint("🚀 [AI] Generando curso...");
+      final prompt = AiPrompts.generateCourse(text, config: config);
       final response = await _textModel!.generateContent([Content.text(prompt)]);
       
-      if (response.text != null && response.text!.isNotEmpty) {
-        // Limpiamos JSON
-        final cleanJson = _cleanJson(response.text!);
-        try {
-          final decoded = jsonDecode(cleanJson);
-          if (decoded is Map<String, dynamic>) {
-            return _mapJsonToCourse(decoded);
-          }
-        } catch (_) {
-          // Se ignora para permitir una salida segura.
+      final rawText = response.text;
+      if (rawText != null && rawText.isNotEmpty) {
+        final parsed = await compute<_ParseCourseResultPayload, Object?>(
+          _parseCourseResult,
+          _ParseCourseResultPayload.course(rawText),
+        );
+        if (parsed is CourseModel) {
+          debugPrint("✅ [AI] JSON válido. Mapeando estructura...");
+          return parsed;
         }
       }
-    } catch (_) {
-      // Se ignora para permitir una salida segura.
+    } catch (e) {
+      debugPrint("⚠️ Error Generación: $e");
     }
     return _generateVisualFallback(text);
   }
@@ -79,8 +73,8 @@ class AiService {
       if (response.statusCode == 200) {
         return "data:image/jpeg;base64,${base64Encode(response.bodyBytes)}";
       }
-    } catch (_) {
-      // Se ignora para permitir una salida segura.
+    } catch (e) {
+      debugPrint("Error Imagen: $e");
     }
     return null;
   }
@@ -95,7 +89,7 @@ class AiService {
       // IMPORTANTE: Aseguramos que nunca devuelva vacío
       String res = response.text?.replaceAll(RegExp(r'[*#_`]'), '').trim() ?? originalText;
       return res.isEmpty ? originalText : res;
-    } catch (_) {
+    } catch (e) {
       return originalText;
     }
   }
@@ -116,8 +110,8 @@ class AiService {
           'description': data['script'] ?? "Video relacionado"
         };
       }
-    } catch (_) {
-      // Se ignora para permitir una salida segura.
+    } catch (e) {
+      debugPrint("Error Video: $e");
     }
     return {'url': '', 'title': topic, 'description': ''};
   }
@@ -147,16 +141,15 @@ class AiService {
       if (text != null) {
         final clean = _cleanJson(text);
         try {
-          final decoded = jsonDecode(clean);
-          return decoded is Map<String, dynamic> ? decoded : {};
-        } catch (_) {
-          // Se ignora para permitir una salida segura.
-          return {};
+            final decoded = jsonDecode(clean);
+            return decoded is Map<String, dynamic> ? decoded : {};
+        } catch (e) {
+            return {};
         }
       }
       return {};
-    } catch (_) {
-      // Se ignora para permitir una salida segura.
+    } catch (e) {
+      debugPrint("Error en assistBlock: $e");
       return {};
     }
   }
@@ -183,17 +176,22 @@ class AiService {
     }
   }
 
-  // 8. GENERADOR CONTEXTUAL POR SECCIÓN
+
   Future<SectionGenerationResult> generateSectionContent({
     required int sectionIndex,
     required String sectionName,
     required String context,
     required Map<String, String> panelConfig,
   }) async {
+    final defaultResult = SectionGenerationResult(
+      title: sectionName,
+      content: '',
+      format: _formatForSection(sectionIndex),
+    );
+
+    if (!_hasGeminiKey()) return defaultResult;
+
     try {
-      if (!_hasGeminiKey()) {
-        return const SectionGenerationResult(format: 'text', content: '');
-      }
       final prompt = AiPrompts.generateSectionContent(
         sectionIndex: sectionIndex,
         sectionName: sectionName,
@@ -202,22 +200,27 @@ class AiService {
         tone: panelConfig['tone'] ?? 'Profesional',
         methodology: panelConfig['methodology'] ?? 'Expositiva',
       );
-      final response = await _textModel!.generateContent([Content.text(prompt)]);
-      final rawText = response.text?.trim() ?? '';
-      if (rawText.isEmpty) {
-        return const SectionGenerationResult(format: 'text', content: '');
-      }
 
-      if (sectionIndex == 10) {
-        return SectionGenerationResult(format: 'json', content: _cleanJson(rawText));
+      final response = await _textModel!.generateContent([Content.text(prompt)]);
+      final rawText = response.text;
+      if (rawText == null || rawText.isEmpty) return defaultResult;
+
+      final result = await compute<_ParseCourseResultPayload, Object?>(
+        _parseCourseResult,
+        _ParseCourseResultPayload.section(
+          response: rawText,
+          sectionIndex: sectionIndex,
+          sectionName: sectionName,
+        ),
+      );
+      if (result is SectionGenerationResult) {
+        return result;
       }
-      if (sectionIndex == 2) {
-        return SectionGenerationResult(format: 'rich_text', content: rawText);
-      }
-      return SectionGenerationResult(format: 'text', content: rawText);
     } catch (e) {
-      return SectionGenerationResult(format: 'text', content: 'Error generando: $e');
+      debugPrint("⚠️ Error generando sección: $e");
+      return defaultResult;
     }
+    return defaultResult;
   }
 
   // ===========================================================================
@@ -225,252 +228,10 @@ class AiService {
   // ===========================================================================
   bool _hasGeminiKey() {
     if (_geminiKey.isEmpty || _textModel == null) {
+      debugPrint("⚠️ GEMINI_API_KEY no configurada. Se omite llamada a Gemini.");
       return false;
     }
     return true;
-  }
-
-  Map<String, dynamic> _withSystemTags(Map<String, dynamic>? config) {
-    final merged = <String, dynamic>{};
-    if (config != null) {
-      merged.addAll(config);
-    }
-    final systemTags = _buildSystemTags(merged);
-    if (systemTags.isNotEmpty) {
-      merged['systemTags'] = systemTags;
-    }
-    return merged;
-  }
-
-  String _buildSystemTags(Map<String, dynamic> config) {
-    final tags = <String>[];
-    void addTag(String label, dynamic value) {
-      final text = value?.toString().trim();
-      if (text != null && text.isNotEmpty) {
-        tags.add('$label: $text');
-      }
-    }
-
-    addTag('Tono', config['tone'] ?? config['strategyTone'] ?? config['panelTone']);
-    addTag('Nivel', config['difficulty'] ?? config['strategyDifficulty']);
-    addTag('Metodología', config['methodology'] ?? config['strategyMethodology']);
-    addTag('Público', config['audience'] ?? config['strategyAudience']);
-    addTag('Estilo', config['styleVisual'] ?? config['style']);
-    addTag('Narrativa', config['styleNarrative']);
-    addTag('Notas de estilo', config['styleNotes']);
-    addTag('SCORM', config['scormVersion']);
-    addTag('Reglas SCORM', config['scormNotes']);
-    addTag('Ecosistema', config['ecosystemNotes']);
-    addTag('LMS', config['lms']);
-    return tags.join(' + ');
-  }
-
-  String _cleanJson(String text) {
-    String clean = text.replaceAll(RegExp(r'```json\s*'), '').replaceAll(RegExp(r'```'), '');
-    final startIndex = clean.indexOf('{');
-    final endIndex = clean.lastIndexOf('}');
-
-    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-      return clean.substring(startIndex, endIndex + 1);
-    }
-    return clean.trim();
-  }
-
-  /// MAPEO BLINDADO: Evita "Delta cannot be empty" poniendo espacios en textos vacíos
-  CourseModel _mapJsonToCourse(Map<String, dynamic> json) {
-    List<ModuleModel> modules = [];
-    int orderCounter = 0;
-    final String introText = json['intro'] is String ? json['intro'] : '';
-    final List<String> objectives = _parseObjectives(json['objectives']);
-    final List<GlossaryItem> glossaryItems = _parseGlossaryItems(json['glossary']);
-    final List<FaqItem> faqItems = _parseFaqItems(json['faqs'] ?? json['faq']);
-
-    // --- A. MÓDULO 0: GUÍA DIDÁCTICA ---
-    List<InteractiveBlock> guideBlocks = [];
-    
-    // Intro
-    if (json['intro'] != null && json['intro'].toString().trim().isNotEmpty) {
-      guideBlocks.add(InteractiveBlock.create(
-        type: BlockType.textPlain,
-        content: {"text": "## Introducción\n\n${json['intro']}"}
-      ));
-    }
-    
-    // Objetivos
-    if (json['objectives'] != null) {
-       String objText = "";
-       if (json['objectives'] is List) {
-         objText = (json['objectives'] as List).join("\n- ");
-       } else {
-         objText = json['objectives'].toString();
-       }
-       
-       if (objText.trim().isNotEmpty) {
-         guideBlocks.add(InteractiveBlock.create(
-          type: BlockType.textPlain,
-          content: {"text": "### Objetivos de Aprendizaje\n\n- $objText"}
-        ));
-       }
-    }
-
-    if (guideBlocks.isNotEmpty) {
-      modules.add(ModuleModel(
-        id: _uuid.v4(),
-        title: "Guía Didáctica",
-        order: orderCounter++,
-        blocks: guideBlocks
-      ));
-    }
-
-    // --- B. MÓDULOS DEL TEMARIO ---
-    if (json['modules'] != null && json['modules'] is List) {
-      for (var m in json['modules']) {
-        List<InteractiveBlock> blocks = [];
-        if (m['blocks'] != null && m['blocks'] is List) {
-          for (var b in m['blocks']) {
-            BlockType type = BlockType.textPlain;
-            if (b['type'] != null) {
-                type = BlockType.values.firstWhere(
-                  (e) => e.name == b['type'], 
-                  orElse: () => BlockType.textPlain
-                );
-            }
-
-            // CORRECCIÓN CRÍTICA PARA EL EDITOR:
-            Map<String, dynamic> finalContent = {};
-            var rawContent = b['content'];
-
-            if (rawContent is Map<String, dynamic>) {
-                finalContent = rawContent;
-            } else if (rawContent is String) {
-                finalContent = {"text": rawContent};
-            } else {
-                finalContent = {"text": rawContent?.toString() ?? " "};
-            }
-            
-            // Si el texto es nulo o vacío, ponemos un espacio para evitar el crash
-            if (!finalContent.containsKey('text') || finalContent['text'] == null || finalContent['text'].toString().isEmpty) {
-                finalContent['text'] = " "; 
-            }
-
-            blocks.add(InteractiveBlock.create(
-              type: type, 
-              content: finalContent
-            ));
-          }
-        }
-        modules.add(ModuleModel(
-          id: _uuid.v4(), 
-          title: m['title'] ?? 'Módulo Temático', 
-          order: orderCounter++, 
-          blocks: blocks
-        ));
-      }
-    }
-
-    // --- C. MÓDULO FINAL: RECURSOS ---
-    List<InteractiveBlock> resourceBlocks = [];
-
-    // Glosario
-    if (json['glossary'] != null) {
-      String glossaryText = "";
-      if (json['glossary'] is List) {
-        for (var term in json['glossary']) {
-           if (term is Map) {
-             glossaryText += "**${term['term']}**: ${term['definition']}\n\n";
-           } else {
-             glossaryText += "- $term\n";
-           }
-        }
-      } else {
-        glossaryText = json['glossary'].toString();
-      }
-      
-      if (glossaryText.trim().isNotEmpty) {
-        resourceBlocks.add(InteractiveBlock.create(
-          type: BlockType.textPlain,
-          content: {"text": "### Glosario\n\n$glossaryText"}
-        ));
-      }
-    }
-
-    // FAQs
-    if (json['faqs'] != null && json['faqs'] is List) {
-      String faqText = "";
-      for (var f in json['faqs']) {
-        if (f is Map) {
-          faqText += "**P: ${f['question']}**\nR: ${f['answer']}\n\n";
-        }
-      }
-      if (faqText.trim().isNotEmpty) {
-        resourceBlocks.add(InteractiveBlock.create(
-          type: BlockType.textPlain,
-          content: {"text": "### Preguntas Frecuentes\n\n$faqText"}
-        ));
-      }
-    }
-
-    if (resourceBlocks.isNotEmpty) {
-      modules.add(ModuleModel(
-        id: _uuid.v4(),
-        title: "Recursos y Ayuda",
-        order: orderCounter++,
-        blocks: resourceBlocks
-      ));
-    }
-
-    return CourseModel(
-      id: _uuid.v4(),
-      userId: 'ia_gen',
-      title: json['title'] ?? 'Curso Generado',
-      description: json['description'] ?? 'Generado automáticamente',
-      createdAt: DateTime.now(),
-      introText: introText,
-      objectives: objectives,
-      glossaryItems: glossaryItems,
-      faqItems: faqItems,
-      modules: modules
-    );
-  }
-
-  List<String> _parseObjectives(dynamic objectives) {
-    if (objectives is List) {
-      return objectives.map((item) => item.toString()).toList();
-    }
-    if (objectives is String && objectives.trim().isNotEmpty) {
-      return [objectives];
-    }
-    return <String>[];
-  }
-
-  List<GlossaryItem> _parseGlossaryItems(dynamic glossary) {
-    if (glossary is List) {
-      return glossary.map((item) {
-        if (item is Map) {
-          return GlossaryItem.fromMap(Map<String, dynamic>.from(item));
-        }
-        return GlossaryItem(term: item.toString(), definition: '');
-      }).toList();
-    }
-    if (glossary is Map) {
-      return [GlossaryItem.fromMap(Map<String, dynamic>.from(glossary))];
-    }
-    return <GlossaryItem>[];
-  }
-
-  List<FaqItem> _parseFaqItems(dynamic faqs) {
-    if (faqs is List) {
-      return faqs.map((item) {
-        if (item is Map) {
-          return FaqItem.fromMap(Map<String, dynamic>.from(item));
-        }
-        return FaqItem(question: item.toString(), answer: '');
-      }).toList();
-    }
-    if (faqs is Map) {
-      return [FaqItem.fromMap(Map<String, dynamic>.from(faqs))];
-    }
-    return <FaqItem>[];
   }
 
   CourseModel _generateVisualFallback(String text) {
@@ -498,21 +259,316 @@ class AiService {
 }
 
 class SectionGenerationResult {
-  final String format;
+  final String title;
   final String content;
+  final String format;
 
-  const SectionGenerationResult({required this.format, required this.content});
+  const SectionGenerationResult({
+    required this.title,
+    required this.content,
+    this.format = 'text',
+  });
 }
 
-class _RefererHttpClient extends http.BaseClient {
-  _RefererHttpClient(this._inner, this._referer);
+enum _ParseTarget { course, section }
 
-  final http.Client _inner;
-  final String _referer;
+class _ParseCourseResultPayload {
+  final String response;
+  final _ParseTarget target;
+  final int? sectionIndex;
+  final String? sectionName;
 
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers['Referer'] = _referer;
-    return _inner.send(request);
+  const _ParseCourseResultPayload._({
+    required this.response,
+    required this.target,
+    this.sectionIndex,
+    this.sectionName,
+  });
+
+  factory _ParseCourseResultPayload.course(String response) {
+    return _ParseCourseResultPayload._(
+      response: response,
+      target: _ParseTarget.course,
+    );
   }
+
+  factory _ParseCourseResultPayload.section({
+    required String response,
+    required int sectionIndex,
+    required String sectionName,
+  }) {
+    return _ParseCourseResultPayload._(
+      response: response,
+      target: _ParseTarget.section,
+      sectionIndex: sectionIndex,
+      sectionName: sectionName,
+    );
+  }
+}
+
+FutureOr<Object?> _parseCourseResult(_ParseCourseResultPayload payload) {
+  switch (payload.target) {
+    case _ParseTarget.course:
+      try {
+        final clean = _cleanJson(payload.response);
+        final decoded = jsonDecode(clean);
+        if (decoded is Map<String, dynamic>) {
+          return _mapJsonToCourse(decoded);
+        }
+      } catch (_) {
+        return null;
+      }
+      return null;
+    case _ParseTarget.section:
+      final index = payload.sectionIndex ?? 0;
+      final content = _sanitizeSectionResponse(payload.response, index);
+      final title = _deriveSectionTitle(payload.sectionName ?? 'Sección', content, index);
+      final format = _formatForSection(index, content: content);
+      return SectionGenerationResult(title: title, content: content, format: format);
+  }
+}
+
+String _sanitizeSectionResponse(String raw, int sectionIndex) {
+  var text = raw.trim().replaceAll(RegExp(r'```json\s*'), '').replaceAll('```', '').trim();
+  if (sectionIndex == 10) {
+    final cleaned = _cleanJson(text);
+    return cleaned.isNotEmpty ? cleaned : text;
+  }
+  return text;
+}
+
+String _deriveSectionTitle(String fallback, String content, int sectionIndex) {
+  if (sectionIndex == 10) {
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is Map<String, dynamic>) {
+        final title = decoded['title']?.toString().trim();
+        if (title != null && title.isNotEmpty) return title;
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+  final firstLine = content
+      .split('\n')
+      .map((line) => line.trim())
+      .firstWhere((line) => line.isNotEmpty, orElse: () => '');
+  if (firstLine.isEmpty) return fallback;
+  final cleaned = firstLine.replaceAll(RegExp(r'^#+\s*'), '').trim();
+  return cleaned.isEmpty ? fallback : cleaned;
+}
+
+String _formatForSection(int sectionIndex, {String? content}) {
+  if (sectionIndex == 10) return 'json';
+  if (sectionIndex == 2) return 'rich_text';
+  if (content != null && content.contains('<h3>')) return 'rich_text';
+  return 'text';
+}
+
+String _cleanJson(String text) {
+  String clean = text.replaceAll(RegExp(r'```json\s*'), '').replaceAll(RegExp(r'```'), '');
+  final startIndex = clean.indexOf('{');
+  final endIndex = clean.lastIndexOf('}');
+
+  if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+    return clean.substring(startIndex, endIndex + 1);
+  }
+  return clean.trim();
+}
+
+CourseModel _mapJsonToCourse(Map<String, dynamic> json) {
+  const Uuid uuid = Uuid();
+  List<ModuleModel> modules = [];
+  int orderCounter = 0;
+  final String introText = json['intro'] is String ? json['intro'] : '';
+  final List<String> objectives = _parseObjectives(json['objectives']);
+  final List<GlossaryItem> glossaryItems = _parseGlossaryItems(json['glossary']);
+  final List<FaqItem> faqItems = _parseFaqItems(json['faqs'] ?? json['faq']);
+
+  // --- A. MÓDULO 0: GUÍA DIDÁCTICA ---
+  List<InteractiveBlock> guideBlocks = [];
+  
+  // Intro
+  if (json['intro'] != null && json['intro'].toString().trim().isNotEmpty) {
+    guideBlocks.add(InteractiveBlock.create(
+      type: BlockType.textPlain,
+      content: {"text": "## Introducción\n\n${json['intro']}"}
+    ));
+  }
+  
+  // Objetivos
+  if (json['objectives'] != null) {
+     String objText = "";
+     if (json['objectives'] is List) {
+       objText = (json['objectives'] as List).join("\n- ");
+     } else {
+       objText = json['objectives'].toString();
+     }
+     
+     if (objText.trim().isNotEmpty) {
+       guideBlocks.add(InteractiveBlock.create(
+        type: BlockType.textPlain,
+        content: {"text": "### Objetivos de Aprendizaje\n\n- $objText"}
+      ));
+     }
+  }
+
+  if (guideBlocks.isNotEmpty) {
+    modules.add(ModuleModel(
+      id: uuid.v4(),
+      title: "Guía Didáctica",
+      order: orderCounter++,
+      blocks: guideBlocks
+    ));
+  }
+
+  // --- B. MÓDULOS DEL TEMARIO ---
+  if (json['modules'] != null && json['modules'] is List) {
+    for (var m in json['modules']) {
+      List<InteractiveBlock> blocks = [];
+      if (m['blocks'] != null && m['blocks'] is List) {
+        for (var b in m['blocks']) {
+          BlockType type = BlockType.textPlain;
+          if (b['type'] != null) {
+              type = BlockType.values.firstWhere(
+                (e) => e.name == b['type'], 
+                orElse: () => BlockType.textPlain
+              );
+          }
+
+          // CORRECCIÓN CRÍTICA PARA EL EDITOR:
+          Map<String, dynamic> finalContent = {};
+          var rawContent = b['content'];
+
+          if (rawContent is Map<String, dynamic>) {
+              finalContent = rawContent;
+          } else if (rawContent is String) {
+              finalContent = {"text": rawContent};
+          } else {
+              finalContent = {"text": rawContent?.toString() ?? " "};
+          }
+          
+          // Si el texto es nulo o vacío, ponemos un espacio para evitar el crash
+          if (!finalContent.containsKey('text') || finalContent['text'] == null || finalContent['text'].toString().isEmpty) {
+              finalContent['text'] = " "; 
+          }
+
+          blocks.add(InteractiveBlock.create(
+            type: type, 
+            content: finalContent
+          ));
+        }
+      }
+      modules.add(ModuleModel(
+        id: uuid.v4(), 
+        title: m['title'] ?? 'Módulo Temático', 
+        order: orderCounter++, 
+        blocks: blocks
+      ));
+    }
+  }
+
+  // --- C. MÓDULO FINAL: RECURSOS ---
+  List<InteractiveBlock> resourceBlocks = [];
+
+  // Glosario
+  if (json['glossary'] != null) {
+    String glossaryText = "";
+    if (json['glossary'] is List) {
+      for (var term in json['glossary']) {
+         if (term is Map) {
+           glossaryText += "**${term['term']}**: ${term['definition']}\n\n";
+         } else {
+           glossaryText += "- $term\n";
+         }
+      }
+    } else {
+      glossaryText = json['glossary'].toString();
+    }
+    
+    if (glossaryText.trim().isNotEmpty) {
+      resourceBlocks.add(InteractiveBlock.create(
+        type: BlockType.textPlain,
+        content: {"text": "### Glosario\n\n$glossaryText"}
+      ));
+    }
+  }
+
+  // FAQs
+  if (json['faqs'] != null && json['faqs'] is List) {
+    String faqText = "";
+    for (var f in json['faqs']) {
+      if (f is Map) {
+        faqText += "**P: ${f['question']}**\nR: ${f['answer']}\n\n";
+      }
+    }
+    if (faqText.trim().isNotEmpty) {
+      resourceBlocks.add(InteractiveBlock.create(
+        type: BlockType.textPlain,
+        content: {"text": "### Preguntas Frecuentes\n\n$faqText"}
+      ));
+    }
+  }
+
+  if (resourceBlocks.isNotEmpty) {
+    modules.add(ModuleModel(
+      id: uuid.v4(),
+      title: "Recursos y Ayuda",
+      order: orderCounter++,
+      blocks: resourceBlocks
+    ));
+  }
+
+  return CourseModel(
+    id: uuid.v4(),
+    userId: 'ia_gen',
+    title: json['title'] ?? 'Curso Generado',
+    description: json['description'] ?? 'Generado automáticamente',
+    createdAt: DateTime.now(),
+    introText: introText,
+    objectives: objectives,
+    glossaryItems: glossaryItems,
+    faqItems: faqItems,
+    modules: modules
+  );
+}
+
+List<String> _parseObjectives(dynamic objectives) {
+  if (objectives is List) {
+    return objectives.map((item) => item.toString()).toList();
+  }
+  if (objectives is String && objectives.trim().isNotEmpty) {
+    return [objectives];
+  }
+  return <String>[];
+}
+
+List<GlossaryItem> _parseGlossaryItems(dynamic glossary) {
+  if (glossary is List) {
+    return glossary.map((item) {
+      if (item is Map) {
+        return GlossaryItem.fromMap(Map<String, dynamic>.from(item));
+      }
+      return GlossaryItem(term: item.toString(), definition: '');
+    }).toList();
+  }
+  if (glossary is Map) {
+    return [GlossaryItem.fromMap(Map<String, dynamic>.from(glossary))];
+  }
+  return <GlossaryItem>[];
+}
+
+List<FaqItem> _parseFaqItems(dynamic faqs) {
+  if (faqs is List) {
+    return faqs.map((item) {
+      if (item is Map) {
+        return FaqItem.fromMap(Map<String, dynamic>.from(item));
+      }
+      return FaqItem(question: item.toString(), answer: '');
+    }).toList();
+  }
+  if (faqs is Map) {
+    return [FaqItem.fromMap(Map<String, dynamic>.from(faqs))];
+  }
+  return <FaqItem>[];
 }

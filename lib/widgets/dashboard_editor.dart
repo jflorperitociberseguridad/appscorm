@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'package:file_picker/file_picker.dart';
@@ -55,6 +56,7 @@ class _DashboardEditorState extends State<DashboardEditor> {
 
   final Map<String, String> _generatedSectionContent = {};
   final Map<String, String> _generatedSectionFormat = {};
+  final Map<String, Timer> _debounceTimers = {};
 
   late final ScrollController _mainScrollController;
   late final bool _ownsScrollController;
@@ -92,6 +94,10 @@ class _DashboardEditorState extends State<DashboardEditor> {
       _mainScrollController.dispose();
     }
     _titleController.dispose();
+    for (final timer in _debounceTimers.values) {
+      timer.cancel();
+    }
+    _debounceTimers.clear();
     super.dispose();
   }
 
@@ -104,6 +110,16 @@ class _DashboardEditorState extends State<DashboardEditor> {
 
   void _notifyCourseUpdated() {
     widget.onCourseUpdated();
+  }
+
+  void _scheduleDebouncedCourseUpdate(String key, VoidCallback update) {
+    update();
+    _debounceTimers[key]?.cancel();
+    _debounceTimers[key] = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      _notifyCourseUpdated();
+      _debounceTimers.remove(key);
+    });
   }
 
   @override
