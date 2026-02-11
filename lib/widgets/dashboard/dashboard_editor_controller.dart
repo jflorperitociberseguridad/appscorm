@@ -5,6 +5,7 @@ const Set<String> _exportSectionIds = {
   'intro',
   'objectives',
   'map',
+  'manuscript',
   'resources',
   'glossary',
   'faq',
@@ -52,7 +53,8 @@ extension _DashboardEditorController on _DashboardEditorState {
         .where((module) => widget.selectionController.isModuleSelected(module))
         .map((module) => module.id)
         .toSet();
-    exportCourse.modules.removeWhere((module) => !selectedModuleIds.contains(module.id));
+    exportCourse.modules
+        .removeWhere((module) => !selectedModuleIds.contains(module.id));
 
     final enabledStaticSections = _enabledStaticSectionIds();
     await ScormExportService().exportCourse(
@@ -63,7 +65,9 @@ extension _DashboardEditorController on _DashboardEditorState {
   }
 
   Set<String> _enabledStaticSectionIds() {
-    return _exportSectionIds.where(widget.selectionController.isSectionSelected).toSet();
+    return _exportSectionIds
+        .where(widget.selectionController.isSectionSelected)
+        .toSet();
   }
 
   CourseModel _buildExportCourseFromLive(CourseModel course) {
@@ -92,7 +96,8 @@ extension _DashboardEditorController on _DashboardEditorState {
     );
   }
 
-  Widget _buildUniversalBlockList(List<InteractiveBlock> blocks, {required String sectionId}) {
+  Widget _buildUniversalBlockList(List<InteractiveBlock> blocks,
+      {required String sectionId}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -122,15 +127,16 @@ extension _DashboardEditorController on _DashboardEditorState {
   }) {
     final targetList = _resolveTargetBlocks(sectionId);
     if (targetList == null) return;
-    _scheduleSetState(() => targetList.add(InteractiveBlock.create(type: type, content: initialContent ?? {})));
+    _scheduleSetState(() => targetList.add(
+        InteractiveBlock.create(type: type, content: initialContent ?? {})));
     _notifyCourseUpdated();
   }
-
 }
 
 class _BlockToolbar extends StatefulWidget {
   final String sectionId;
-  final void Function(BlockType type, Map<String, dynamic>? initialContent) onBlockSelected;
+  final void Function(BlockType type, Map<String, dynamic>? initialContent)
+      onBlockSelected;
 
   const _BlockToolbar({
     required this.sectionId,
@@ -163,7 +169,10 @@ class _BlockToolbarState extends State<_BlockToolbar> {
           borderRadius: BorderRadius.circular(26),
           border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 26, offset: const Offset(0, 16)),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 26,
+                offset: const Offset(0, 16)),
           ],
         ),
         child: Column(
@@ -184,17 +193,22 @@ class _BlockToolbarState extends State<_BlockToolbar> {
                     borderRadius: BorderRadius.circular(20),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 280),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
                         color: isActive
                             ? familyData.color
                             : familyData.color.withValues(alpha: 0.12),
-                        border: Border.all(color: isActive ? familyData.color : Colors.transparent),
+                        border: Border.all(
+                            color: isActive
+                                ? familyData.color
+                                : Colors.transparent),
                         boxShadow: isActive
                             ? [
                                 BoxShadow(
-                                  color: familyData.color.withValues(alpha: 0.25),
+                                  color:
+                                      familyData.color.withValues(alpha: 0.25),
                                   blurRadius: 18,
                                   offset: const Offset(0, 9),
                                 ),
@@ -204,7 +218,9 @@ class _BlockToolbarState extends State<_BlockToolbar> {
                       child: Text(
                         familyData.label,
                         style: TextStyle(
-                          color: isActive ? Colors.white : familyData.color.withValues(alpha: 0.9),
+                          color: isActive
+                              ? Colors.white
+                              : familyData.color.withValues(alpha: 0.9),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -227,9 +243,13 @@ class _BlockToolbarState extends State<_BlockToolbar> {
               child: LayoutBuilder(
                 key: ValueKey(family.id),
                 builder: (context, constraints) {
-                  final availableWidth = constraints.maxWidth.isFinite ? constraints.maxWidth : MediaQuery.of(context).size.width;
-                  final columns = (availableWidth ~/ 200).clamp(1, family.blocks.length);
-                  final tileWidth = (availableWidth - (columns - 1) * 12) / columns;
+                  final availableWidth = constraints.maxWidth.isFinite
+                      ? constraints.maxWidth
+                      : MediaQuery.of(context).size.width;
+                  final columns =
+                      (availableWidth ~/ 200).clamp(1, family.blocks.length);
+                  final tileWidth =
+                      (availableWidth - (columns - 1) * 12) / columns;
                   return Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -239,7 +259,8 @@ class _BlockToolbarState extends State<_BlockToolbar> {
                         child: _BlockPaletteCard(
                           entry: block,
                           accentColor: family.color,
-                          onTap: () => widget.onBlockSelected(block.type, block.initialContent),
+                          onTap: () => widget.onBlockSelected(
+                              block.type, block.initialContent),
                         ),
                       );
                     }).toList(),
@@ -289,10 +310,14 @@ class _BlockPaletteCardState extends State<_BlockPaletteCard> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _hovering ? widget.accentColor : Colors.grey.withValues(alpha: 0.25)),
+          border: Border.all(
+              color: _hovering
+                  ? widget.accentColor
+                  : Colors.grey.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
-              color: widget.accentColor.withValues(alpha: _hovering ? 0.3 : 0.15),
+              color:
+                  widget.accentColor.withValues(alpha: _hovering ? 0.3 : 0.15),
               blurRadius: _hovering ? 24 : 14,
               offset: const Offset(0, 10),
             ),
@@ -311,18 +336,21 @@ class _BlockPaletteCardState extends State<_BlockPaletteCard> {
                   CircleAvatar(
                     radius: 24,
                     backgroundColor: Colors.indigo.withValues(alpha: 0.12),
-                    child: Icon(widget.entry.icon, size: 26, color: Colors.indigo),
+                    child:
+                        Icon(widget.entry.icon, size: 26, color: Colors.indigo),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     widget.entry.label,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
                   Text(
                     widget.entry.description,
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.2),
+                    style: TextStyle(
+                        fontSize: 11, color: Colors.grey.shade600, height: 1.2),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -393,7 +421,9 @@ const List<_BlockFamily> _blockFamilies = [
         label: 'Texto enriquecido',
         description: 'Combina estilos, listas y enlaces.',
         icon: Icons.format_paint,
-        initialContent: {'text': '<p>Texto enriquecido con <strong>énfasis</strong>.</p>'},
+        initialContent: {
+          'text': '<p>Texto enriquecido con <strong>énfasis</strong>.</p>'
+        },
       ),
       _BlockToolEntry(
         type: BlockType.quote,
@@ -407,14 +437,18 @@ const List<_BlockFamily> _blockFamilies = [
         label: 'Alerta visual',
         description: 'Señala advertencias o pasos críticos.',
         icon: Icons.warning_amber_outlined,
-        initialContent: {'text': '<div class="alert"><strong>Atención:</strong> Acción requerida.</div>'},
+        initialContent: {
+          'text':
+              '<div class="alert"><strong>Atención:</strong> Acción requerida.</div>'
+        },
       ),
     ],
   ),
   _BlockFamily(
     id: 'organizacion',
     label: 'Organización',
-    description: 'Fragmentar información compleja para evitar la fatiga cognitiva.',
+    description:
+        'Fragmentar información compleja para evitar la fatiga cognitiva.',
     color: Colors.teal,
     blocks: [
       _BlockToolEntry(
@@ -422,7 +456,9 @@ const List<_BlockFamily> _blockFamilies = [
         label: 'Lista inteligente',
         description: 'Agrupa pasos o elementos relacionados.',
         icon: Icons.list_alt,
-        initialContent: {'text': '<ul><li>Paso 1</li><li>Paso 2</li><li>Paso 3</li></ul>'},
+        initialContent: {
+          'text': '<ul><li>Paso 1</li><li>Paso 2</li><li>Paso 3</li></ul>'
+        },
       ),
       _BlockToolEntry(
         type: BlockType.accordion,
@@ -517,7 +553,8 @@ const List<_BlockFamily> _blockFamilies = [
   _BlockFamily(
     id: 'comprobacion',
     label: 'Comprobación',
-    description: 'Retos cortos para validar que el alumno sigue el hilo del curso.',
+    description:
+        'Retos cortos para validar que el alumno sigue el hilo del curso.',
     color: Colors.red,
     blocks: [
       _BlockToolEntry(

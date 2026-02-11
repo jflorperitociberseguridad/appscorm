@@ -108,6 +108,13 @@ class ManifestGenerator {
       title: '1.4 Mapa Conceptual',
       file: 'mapa.html',
     );
+    addGuideItem(
+      sectionId: 'manuscript',
+      itemId: 'ITEM-MANU',
+      resourceId: 'RES-MANU',
+      title: '1.5 Manuscrito Maestro',
+      file: 'manuscrito.html',
+    );
     addResourceItem(
       sectionId: 'resources',
       itemId: 'ITEM-REC',

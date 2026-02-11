@@ -259,6 +259,17 @@ class ScormExportService {
         'content': blocksToHtml(course.conceptMap.blocks, '')
       };
     }
+    if (isEnabled('manuscript')) {
+      final manuscriptText = course.referenceModule?.content ?? '';
+      final manuscriptTrimmed = manuscriptText.trim();
+      final manuscriptContent = manuscriptTrimmed.isEmpty
+          ? '<p>No se ha generado un manuscrito maestro aún.</p>'
+          : '<pre class="manuscript-preview">${HtmlGenerator.esc.convert(manuscriptTrimmed)}</pre>';
+      pages['manuscrito.html'] = {
+        'title': '1.5 Manuscrito Maestro',
+        'content': manuscriptContent,
+      };
+    }
     if (isEnabled('resources')) {
       pages['recursos.html'] = {
         'title': '3.1 Recursos Didácticos',

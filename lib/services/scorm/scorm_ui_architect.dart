@@ -196,6 +196,19 @@ body { background: var(--bg-body); color: var(--text-main); height: 100vh; overf
   z-index: 1;
 }
 
+.manuscript-preview {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px dashed rgba(59, 130, 246, 0.4);
+  border-radius: 18px;
+  padding: 22px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-family: 'Inter', 'SFMono-Regular', monospace;
+  color: var(--text-main);
+  max-height: 480px;
+  overflow: auto;
+}
+
 .right-panel {
   position: fixed;
   right: 24px;

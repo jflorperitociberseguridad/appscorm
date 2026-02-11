@@ -23,7 +23,7 @@ class SecretLoader {
 
       final raw = json.decode(content) as Map<String, dynamic>;
       return raw.map((key, value) {
-        final lowerKey = (key ?? '').toString().toLowerCase();
+        final lowerKey = key.toString().toLowerCase();
         return MapEntry(lowerKey, value?.toString() ?? '');
       });
     } catch (error) {

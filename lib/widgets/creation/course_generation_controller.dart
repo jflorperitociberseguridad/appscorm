@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -259,14 +261,22 @@ class CourseGenerationController {
     try {
       final title = (config['title'] ?? 'Curso SCORM').toString().trim();
       final scormVersion = (config['scormVersion'] ?? '1.2').toString();
+      final fallbackTitle = title.isEmpty ? 'Módulo 1' : 'Módulo 1 · $title';
       final modulesFromJson = _tryParseModulesFromJson(manuscript, config);
-      final modules = modulesFromJson.isNotEmpty
+      final baseModules = modulesFromJson.isNotEmpty
           ? modulesFromJson
           : _buildModulesFromMarkdown(
               manuscript,
               config,
-              fallbackTitle: title.isEmpty ? 'Módulo 1' : 'Módulo 1 · $title',
+              fallbackTitle: fallbackTitle,
             );
+      final desiredModuleCount = _moduleCountFromConfig(config);
+      final modules = _ensureModuleCount(
+        baseModules,
+        desiredModuleCount,
+        fallbackTitle: fallbackTitle,
+        manuscript: manuscript,
+      );
       final moduleInstances = <ModuleModel>[];
       for (var i = 0; i < modules.length; i++) {
         final module = modules[i];
@@ -1093,6 +1103,88 @@ class CourseGenerationController {
     return nonEmpty.isEmpty
         ? [_ModuleDraft(title: fallbackTitle, content: manuscript)]
         : nonEmpty;
+  }
+
+  int _moduleCountFromConfig(Map<String, dynamic> config) {
+    final raw = config['moduleCount'];
+    if (raw is num) return max(1, raw.toInt());
+    if (raw is String) {
+      final parsed = int.tryParse(raw);
+      if (parsed != null) return max(1, parsed);
+    }
+    return 1;
+  }
+
+  List<ModuleModel> _ensureModuleCount(
+    List<ModuleModel> modules,
+    int desiredCount, {
+    required String fallbackTitle,
+    required String manuscript,
+  }) {
+    if (desiredCount <= modules.length) return modules;
+    final aggregated = modules.expand((m) => m.blocks).toList();
+    final chunkSize =
+        max(1, (aggregated.length + desiredCount - 1) ~/ desiredCount);
+    final snippet = _excerptFromManuscript(manuscript);
+    final titles = modules.map((m) => m.title).toList();
+    final result = <ModuleModel>[];
+    for (var i = 0; i < desiredCount; i++) {
+      final start = i * chunkSize;
+      final end = min(aggregated.length, start + chunkSize);
+      final chunkBlocks = <InteractiveBlock>[];
+      if (start < aggregated.length) {
+        chunkBlocks.addAll(
+          aggregated.sublist(start, end).map(_cloneBlock),
+        );
+      }
+      if (chunkBlocks.isEmpty) {
+        chunkBlocks.add(_placeholderModuleBlock(i + 1, snippet));
+      }
+      final title = i < titles.length
+          ? titles[i]
+          : 'Módulo ${i + 1} · ${fallbackTitle.split('·').last.trim()}';
+      result.add(
+        ModuleModel(
+          id: const Uuid().v4(),
+          title: title,
+          order: i,
+          blocks: chunkBlocks,
+          type: ModuleType.text,
+          content: '',
+        ),
+      );
+    }
+    return result;
+  }
+
+  InteractiveBlock _cloneBlock(InteractiveBlock block) {
+    return InteractiveBlock.create(
+      type: block.type,
+      content: Map<String, dynamic>.from(block.content),
+    );
+  }
+
+  InteractiveBlock _placeholderModuleBlock(int moduleNumber, String snippet) {
+    return InteractiveBlock.create(
+      type: BlockType.textPlain,
+      content: {
+        'text':
+            'Contenido por desarrollar para el tema $moduleNumber. ${snippet.isNotEmpty ? snippet : 'Contenido adicional en construcción.'}',
+      },
+    );
+  }
+
+  String _excerptFromManuscript(String manuscript) {
+    final lines = manuscript.split(RegExp(r'\n+'));
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isNotEmpty) {
+        final preview =
+            trimmed.length > 90 ? '${trimmed.substring(0, 90)}...' : trimmed;
+        return preview;
+      }
+    }
+    return 'Contenido adicional en construcción.';
   }
 }
 

@@ -10,6 +10,7 @@ class DashboardSelectionController extends ChangeNotifier {
     'intro',
     'objectives',
     'map',
+    'manuscript',
     'index',
     'modules_root',
     'resources',
@@ -28,7 +29,8 @@ class DashboardSelectionController extends ChangeNotifier {
 
   bool isSectionSelected(String id) => _sectionSelection[id] ?? true;
 
-  bool isModuleSelected(ModuleModel module) => _sectionSelection[_moduleKey(module)] ?? true;
+  bool isModuleSelected(ModuleModel module) =>
+      _sectionSelection[_moduleKey(module)] ?? true;
 
   String sectionIdForModule(ModuleModel module) => 'module_${module.id}';
 
@@ -94,7 +96,8 @@ class DashboardSelectionController extends ChangeNotifier {
     _sectionSelection.remove(_moduleKey(module));
     if (_selectedModuleId == module.id) {
       _selectedSection = 'modules_root';
-      _selectedModuleId = course.modules.isNotEmpty ? course.modules.first.id : null;
+      _selectedModuleId =
+          course.modules.isNotEmpty ? course.modules.first.id : null;
     }
     notifyListeners();
   }
@@ -142,14 +145,18 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("¿Eliminar módulo?"),
-        content: const Text("Esta acción no se puede deshacer y borrará todo el contenido del tema."),
+        content: const Text(
+            "Esta acción no se puede deshacer y borrará todo el contenido del tema."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCELAR")),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("CANCELAR")),
           TextButton(
             onPressed: () {
               _scheduleSetState(() {
                 widget.course.modules.removeAt(index);
-                widget.selectionController.onModuleRemoved(module, widget.course);
+                widget.selectionController
+                    .onModuleRemoved(module, widget.course);
               });
               widget.onCourseUpdated();
               Navigator.pop(context);
@@ -220,14 +227,18 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                   children: [
                     _navHeader("CONFIGURACIÓN"),
                     _navItem("General", Icons.settings_applications, 'general'),
-                    _navItem("Introducción", Icons.auto_awesome_mosaic, 'intro'),
+                    _navItem(
+                        "Introducción", Icons.auto_awesome_mosaic, 'intro'),
                     _navItem("Objetivos", Icons.flag_circle, 'objectives'),
-                    _navItem("Mapa Conceptual", Icons.account_tree_outlined, 'map'),
-
+                    _navItem(
+                        "Mapa Conceptual", Icons.account_tree_outlined, 'map'),
                     _navHeader("TEMARIO"),
-                    _navItem("Índice del curso", Icons.list_alt_outlined, 'index'),
-                    _navItem("Gestión de Temas", Icons.library_books, 'modules_root'),
-                    _navActionItem("Añadir tema", Icons.add_circle_outline, widget.onAddModule),
+                    _navItem(
+                        "Índice del curso", Icons.list_alt_outlined, 'index'),
+                    _navItem("Gestión de Temas", Icons.library_books,
+                        'modules_root'),
+                    _navActionItem("Añadir tema", Icons.add_circle_outline,
+                        widget.onAddModule),
                     ...List.generate(
                       widget.course.modules.length,
                       (i) {
@@ -235,16 +246,20 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                         return _navModuleItem(module, i);
                       },
                     ),
-
+                    _navHeader("MANUSCRITO MAESTRO"),
+                    _navItem(
+                        "Manuscrito Maestro", Icons.description, 'manuscript'),
                     _navHeader("RECURSOS Y CIERRE"),
                     _navItem("Recursos", Icons.folder_open, 'resources'),
                     _navItem("Glosario", Icons.spellcheck, 'glossary'),
                     _navItem("Preguntas Frecuentes", Icons.help_center, 'faq'),
-                    _navItem("Evaluación Final", Icons.fact_check_outlined, 'eval'),
+                    _navItem(
+                        "Evaluación Final", Icons.fact_check_outlined, 'eval'),
                     _navItem("Estadísticas", Icons.bar_chart, 'stats'),
-
                     _navHeader("BANCO DE CONTENIDOS MULTIMODAL"),
-                    _navItem("Banco de Contenidos", Icons.archive_outlined, 'bank', showCheckbox: false),
+                    _navItem(
+                        "Banco de Contenidos", Icons.archive_outlined, 'bank',
+                        showCheckbox: false),
                     const SizedBox(height: 50),
                   ],
                 ),
@@ -261,15 +276,23 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: const Row(
         children: [
-          CircleAvatar(backgroundColor: Colors.indigoAccent, radius: 15, child: Icon(Icons.bolt, color: Colors.white, size: 18)),
+          CircleAvatar(
+              backgroundColor: Colors.indigoAccent,
+              radius: 15,
+              child: Icon(Icons.bolt, color: Colors.white, size: 18)),
           SizedBox(width: 12),
-          Text("SCORM MASTER", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+          Text("SCORM MASTER",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16)),
         ],
       ),
     );
   }
 
-  Widget _buildNavCheckbox({required bool value, required ValueChanged<bool?> onChanged}) {
+  Widget _buildNavCheckbox(
+      {required bool value, required ValueChanged<bool?> onChanged}) {
     return Theme(
       data: Theme.of(context).copyWith(
         unselectedWidgetColor: Colors.white38,
@@ -291,20 +314,32 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
   Widget _navHeader(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(15, 25, 15, 10),
-      child: Text(title, style: const TextStyle(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+      child: Text(title,
+          style: const TextStyle(
+              color: Colors.white30,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5)),
     );
   }
 
-  Widget _navItem(String title, IconData icon, String id, {bool showCheckbox = true}) {
+  Widget _navItem(String title, IconData icon, String id,
+      {bool showCheckbox = true}) {
     bool isSelected = widget.selectionController.selectedSection == id;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-      leading: Icon(icon, color: isSelected ? Colors.indigoAccent : Colors.white60, size: 18),
-      title: Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.white60, fontSize: 13, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+      leading: Icon(icon,
+          color: isSelected ? Colors.indigoAccent : Colors.white60, size: 18),
+      title: Text(title,
+          style: TextStyle(
+              color: isSelected ? Colors.white : Colors.white60,
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
       trailing: showCheckbox
           ? _buildNavCheckbox(
               value: widget.selectionController.isSectionSelected(id),
-              onChanged: (value) => widget.selectionController.setSectionSelected(id, value ?? true),
+              onChanged: (value) => widget.selectionController
+                  .setSectionSelected(id, value ?? true),
             )
           : null,
       onTap: () => widget.selectionController.selectSection(id),
@@ -318,7 +353,8 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 12),
       leading: Icon(icon, color: Colors.white30, size: 18),
-      title: Text(title, style: const TextStyle(color: Colors.white30, fontSize: 12)),
+      title: Text(title,
+          style: const TextStyle(color: Colors.white30, fontSize: 12)),
       onTap: onTap,
       dense: true,
     );
@@ -330,14 +366,18 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
     return ListTile(
       key: ValueKey('module_${module.id}'),
       contentPadding: const EdgeInsets.only(left: 40, right: 8),
-      title: Text(module.title, style: TextStyle(color: isSelected ? Colors.indigoAccent : Colors.white30, fontSize: 12)),
+      title: Text(module.title,
+          style: TextStyle(
+              color: isSelected ? Colors.indigoAccent : Colors.white30,
+              fontSize: 12)),
       onTap: () => widget.selectionController.selectModule(module),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildNavCheckbox(
             value: widget.selectionController.isModuleSelected(module),
-            onChanged: (value) => widget.selectionController.setModuleSelected(module, value ?? true),
+            onChanged: (value) => widget.selectionController
+                .setModuleSelected(module, value ?? true),
           ),
           IconButton(
             icon: const Icon(Icons.edit, size: 16),
