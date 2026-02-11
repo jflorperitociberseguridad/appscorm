@@ -169,30 +169,6 @@ function updateBadges(progress) {
     const threshold = parseInt(badge.getAttribute('data-threshold') || '0', 10);
     badge.classList.toggle('active', progress >= threshold);
   });
-  if (progress >= 100) {
-    launchConfetti(80);
-  }
-}
-
-function launchConfetti(count) {
-  const layer = document.getElementById('confetti');
-  const container = document.querySelector('.center-content');
-  if (!layer || !container) return;
-  const rect = container.getBoundingClientRect();
-  const colors = ['#FBBF24', '#F59E0B', '#60A5FA', '#3B82F6'];
-  for (let i = 0; i < count; i++) {
-    const piece = document.createElement('div');
-    piece.className = 'confetti-piece';
-    const fromLeft = Math.random() > 0.5;
-    const xBase = fromLeft ? rect.left + 12 : rect.right - 12;
-    const xJitter = (Math.random() * 60) * (fromLeft ? 1 : -1);
-    piece.style.left = (xBase + xJitter) + 'px';
-    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-    piece.style.animationDelay = (Math.random() * 0.2) + 's';
-    piece.style.transform = 'translateY(-10vh) rotate(' + (Math.random() * 360) + 'deg)';
-    layer.appendChild(piece);
-    setTimeout(() => piece.remove(), 1600);
-  }
 }
 
 function applyMagnetism(selector) {

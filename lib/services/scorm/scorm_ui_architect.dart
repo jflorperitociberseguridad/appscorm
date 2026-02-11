@@ -76,8 +76,6 @@ class ScormUiArchitect {
     </aside>
   </div>
 
-  <div id="confetti" class="confetti-layer"></div>
-  <div id="pageWipe" class="page-wipe"></div>
 
   <script>
     $scripts
@@ -571,22 +569,6 @@ body::before {
 
 .magnetic { transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
-.confetti-layer {
-  position: fixed; inset: 0; pointer-events: none; z-index: 999;
-  overflow: hidden;
-}
-.confetti-piece {
-  position: absolute; width: 8px; height: 12px; border-radius: 2px;
-  opacity: 0.9; animation: confettiFall 1.4s ease-in forwards;
-}
-
-.page-wipe {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(90deg, rgba(59,130,246,0.0), rgba(59,130,246,0.12), rgba(59,130,246,0.0));
-  transform: translateX(-120%); z-index: 998; pointer-events: none;
-}
-.page-wipe.active { animation: wipe 0.35s ease-in-out forwards; }
-
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
@@ -595,17 +577,6 @@ body::before {
 @keyframes liquidFlow {
   0% { background-position: 0% 50%; }
   100% { background-position: 100% 50%; }
-}
-
-@keyframes confettiFall {
-  0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
-  10% { opacity: 1; }
-  100% { transform: translateY(100vh) rotate(320deg); opacity: 0; }
-}
-
-@keyframes wipe {
-  0% { transform: translateX(-120%); }
-  100% { transform: translateX(120%); }
 }
 
 /* Tabs */
